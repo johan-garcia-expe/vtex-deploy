@@ -4,7 +4,8 @@
   "description": "Instalador de skills y rules para el agente de deploy VTEX IO",
   "type": "module",
   "bin": {
-    "vtex-deploy": "./bin/setup.mjs"
+    "vtex-deploy": "./bin/setup.mjs",
+    "vtex-deploy-init": "./bin/init.mjs"
   },
   "scripts": {
     "dev": "tsx src/install.ts",

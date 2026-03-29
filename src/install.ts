@@ -1,5 +1,5 @@
 import * as p from "@clack/prompts";
-import { readFileSync, writeFileSync, mkdirSync, existsSync, symlinkSync, cpSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, cpSync } from "fs";
 import { resolve, join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -20,6 +20,17 @@ const AGENT_FILES: Record<string, { path: string; format: "markdown" | "json" }>
   "Universal":      { path: "AGENTS.md",                         format: "markdown" },
 };
 
+// Skills disponibles con metadatos para el instalador
+const ALL_SKILLS = [
+  { value: "vtex-deploy-qa",       hint: "Flujo de deploy a QA"              },
+  { value: "vtex-deploy-prod",     hint: "Flujo de deploy a Producción"       },
+  { value: "vtex-transform",       hint: "Transformación de vendor QA ↔ Prod" },
+  { value: "vtex-git-flow",        hint: "Gestión de ramas y PRs"             },
+  { value: "vtex-io-app-structure",hint: "Estructura de apps VTEX IO"         },
+  { value: "vtex-manifest",        hint: "Configuración de manifest.json"     },
+  { value: "vtex-store-framework", hint: "Store Framework y bloques"          },
+];
+
 // Detecta agentes instalados en el proyecto destino
 function detectInstalledAgents(destPath: string): string[] {
   const detected: string[] = [];
@@ -29,17 +40,37 @@ function detectInstalledAgents(destPath: string): string[] {
   return detected;
 }
 
-// Copia skills, rules y commands a .agents/ del proyecto destino
-function copyCanonicalFiles(destPath: string) {
+// Detecta skills ya instaladas en .agents/skills/ del proyecto destino
+function detectInstalledSkills(destPath: string): string[] {
+  const skillsDir = join(destPath, ".agents", "skills");
+  if (!existsSync(skillsDir)) return [];
+  return ALL_SKILLS
+    .map(s => s.value)
+    .filter(skill => existsSync(join(skillsDir, skill)));
+}
+
+// Copia skills seleccionadas + rules + commands a .agents/ del proyecto destino
+function copyCanonicalFiles(destPath: string, selectedSkills: string[]) {
   const agentsDir = join(destPath, ".agents");
   mkdirSync(agentsDir, { recursive: true });
-  const dirs = ["skills", "rules", "commands"];
 
-  for (const dir of dirs) {
+  // Rules y commands: siempre se actualizan
+  for (const dir of ["rules", "commands"]) {
     const src = join(INSTALLER_ROOT, dir);
     const dest = join(agentsDir, dir);
     mkdirSync(dest, { recursive: true });
     cpSync(src, dest, { recursive: true });
+  }
+
+  // Skills: solo las seleccionadas
+  const skillsDir = join(agentsDir, "skills");
+  mkdirSync(skillsDir, { recursive: true });
+  for (const skill of selectedSkills) {
+    const src = join(INSTALLER_ROOT, "skills", skill);
+    const dest = join(skillsDir, skill);
+    if (existsSync(src)) {
+      cpSync(src, dest, { recursive: true });
+    }
   }
 }
 
@@ -55,18 +86,15 @@ function injectOrchestrator(filePath: string, orchestratorContent: string, forma
 
   let injected: string;
   if (format === "json") {
-    // Para OpenCode: envolver en JSON con campo "instructions"
     injected = JSON.stringify({ instructions: orchestratorContent }, null, 2);
   } else {
     const markedBlock = `${MARKER_START}\n${orchestratorContent}\n${MARKER_END}`;
     if (content.includes(MARKER_START)) {
-      // Reemplazar bloque existente
       injected = content.replace(
         new RegExp(`${MARKER_START}[\\s\\S]*?${MARKER_END}`),
         markedBlock
       );
     } else {
-      // Agregar al final preservando contenido del usuario
       injected = content ? `${content}\n\n${markedBlock}` : markedBlock;
     }
   }
@@ -104,7 +132,6 @@ function copyConfig(destPath: string) {
 async function main() {
   p.intro("vtex-deploy — Instalador de skills para agente de deploy VTEX IO");
 
-  // Obtener directorio del proyecto destino
   const destPath = process.cwd();
   p.log.info(`Instalando en: ${destPath}`);
 
@@ -119,18 +146,25 @@ async function main() {
   });
   if (p.isCancel(mode)) { p.cancel("Instalación cancelada."); process.exit(0); }
 
-  // FASE 2 — Skills a instalar (solo en modo custom)
-  let selectedSkills: string[] = ["vtex-deploy-qa", "vtex-deploy-prod", "vtex-transform", "vtex-git-flow"];
-  if (mode === "custom") {
+  // FASE 2 — Skills a instalar
+  const installedSkills = detectInstalledSkills(destPath);
+
+  let selectedSkills: string[];
+  if (mode !== "custom") {
+    selectedSkills = ALL_SKILLS.map(s => s.value);
+  } else {
+    const defaultValues = installedSkills.length > 0
+      ? installedSkills
+      : ALL_SKILLS.map(s => s.value);
+
     const skills = await p.multiselect({
-      message: "¿Qué skills deseas instalar?",
-      options: [
-        { value: "vtex-deploy-qa",   label: "vtex-deploy-qa   — Flujo de deploy a QA"         },
-        { value: "vtex-deploy-prod", label: "vtex-deploy-prod — Flujo de deploy a Producción"  },
-        { value: "vtex-transform",   label: "vtex-transform   — Transformación de archivos"    },
-        { value: "vtex-git-flow",    label: "vtex-git-flow    — Gestión de ramas y PRs"        },
-      ],
-      initialValues: ["vtex-deploy-qa", "vtex-deploy-prod", "vtex-transform", "vtex-git-flow"],
+      message: "¿Qué skills deseas instalar o actualizar?",
+      options: ALL_SKILLS.map(({ value, hint }) => ({
+        value,
+        label: installedSkills.includes(value) ? `${value}  (instalado)` : value,
+        hint,
+      })),
+      initialValues: defaultValues,
     });
     if (p.isCancel(skills)) { p.cancel("Instalación cancelada."); process.exit(0); }
     selectedSkills = skills as string[];
@@ -157,6 +191,7 @@ async function main() {
   const selectedAgents = await p.multiselect({
     message: "¿Para qué agentes deseas generar los archivos nativos?",
     options: agentOptions,
+    initialValues: detectedAgents.length > 0 ? detectedAgents : ["Claude Code"],
   });
   if (p.isCancel(selectedAgents)) { p.cancel("Instalación cancelada."); process.exit(0); }
 
@@ -171,11 +206,11 @@ async function main() {
 
   // EJECUCIÓN
   const spinner = p.spinner();
+  const installDest = scope === "global" ? process.env.HOME! : destPath;
 
   // Fase A — Copias canónicas
   spinner.start("Copiando archivos a .agents/...");
-  const installDest = scope === "global" ? process.env.HOME! : destPath;
-  copyCanonicalFiles(installDest);
+  copyCanonicalFiles(installDest, selectedSkills);
   spinner.stop("Archivos copiados a .agents/");
 
   // Fase B — Generar archivos nativos por agente
@@ -198,7 +233,7 @@ async function main() {
   // Fase D — .gitignore
   updateGitignore(installDest);
 
-  p.outro("vtex-deploy instalado correctamente. El agente ya tiene acceso a los skills de deploy VTEX IO.");
+  p.outro("vtex-deploy instalado correctamente. El agente ya tiene acceso a los skills de deploy VTEX IO.\n  Ejecuta vtex-deploy-init para configurar el proyecto.");
 }
 
 main().catch((err) => {
