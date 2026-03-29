@@ -1,53 +1,81 @@
 ---
 name: "vtex-git-flow"
 trigger: "crea PR, crear pull request, gestionar ramas, git flow deploy, push a qa"
-description: "Gestión de ramas Git y Pull Requests para el flujo de deploy VTEX IO. Detecta ramas disponibles y decide cuándo crear PRs según el contexto (rama actual + flujo en ejecución)."
+description: "Gestión de ramas Git y Pull Requests para el flujo de deploy VTEX IO. Detecta ramas disponibles y decide cuándo crear PRs según el contexto. Usar siempre que el flujo de deploy necesite crear ramas, hacer push o abrir un PR."
 related: [vtex-deploy-qa, vtex-deploy-prod]
 ---
 
 # Git Flow — Deploy VTEX IO
 
-## Detección de ramas
+## Arquitectura de ramas
 
-Ejecutar `git branch -a` y mapear:
-- `main` o `master` → rama principal (vendor Prod, código estable en producción)
-- `dev` o `develop` → rama de desarrollo (vendor Prod, código listo para deploy)
-- `qa` → rama QA (vendor QA cuando se necesite persistir)
+El código siempre fluye en una sola dirección — nunca hacia atrás:
+
+```
+feature/* ──► develop ──► deploy/qa-{fecha} ──► qa
+                │
+                └──────────────────────────────► main  (solo via PR de estabilización)
+```
+
+La rama `qa` es **one-way**: solo recibe PRs desde ramas `deploy/qa-*`, nunca se mergea hacia `develop` ni `main`. Esto es por diseño: `qa` contiene vendor_qa que es incompatible con las ramas de desarrollo.
+
+## Convención de nombres de ramas
+
+| Tipo | Patrón | Ejemplo |
+|---|---|---|
+| Deploy QA | `deploy/qa-{YYYYMMDD}` | `deploy/qa-20260328` |
+| Feature | `feature/{nombre}` | `feature/banner-home` |
+| Fix / Hotfix | `fix/{nombre}` | `fix/cart-layout` |
+| Chore | `chore/{nombre}` | `chore/cleanup-styles` |
 
 ## Lógica de PRs por flujo
 
-### Flujo QA (qa:full / qa:release)
-- Desde feature branch → `gh pr create --base qa --title "[QA] {rama-actual}" --body "Deploy a QA\n\nApp: {app}\nVendor: {vendor_qa}"`
-- Desde rama qa → no crear PR (ya está en la rama correcta)
+### Flujo QA — PR al FINAL del deploy (registro)
 
-### Flujo Producción (prod)
-- Desde feature branch → `gh pr create --base {develop/dev} --title "[PROD] {rama-actual}" --body "Deploy a Producción\n\nApp: {app}\nVendor: {vendor_prod}"`
-- Desde rama qa → `gh pr create --base {develop/dev} --title "[PROD] qa"`
-- Desde develop/dev → no crear PR (ya está en la rama correcta)
+El PR a `qa` se crea **después** del deploy, como registro de lo que se desplegó:
 
-### PR de estabilización (acción separada, NO parte del flujo de deploy)
-- `develop`/`dev` → `main`/`master`
+```
+gh pr create \
+  --base qa \
+  --head deploy/qa-{YYYYMMDD} \
+  --title "[QA] {rama-origen} — {YYYYMMDD}" \
+  --body "Deploy a QA\n\nApp: {vendor_qa}.{app}@{version}\nWorkspace: deploy{YYYYMMDD}\nOrigen: {rama-origen}"
+```
+
+No es un gate — no espera aprobación para continuar el deploy.
+
+### Flujo Producción
+
+- Desde feature branch → `gh pr create --base {develop} --title "[PROD] {rama-actual}"`
+- Desde rama qa → `gh pr create --base {develop} --title "[PROD] qa"`
+- Desde develop → no crear PR (ya está en la rama correcta)
+- Esperar confirmación del usuario: "¿PR aprobado y mergeado? (s/n)"
+
+### PR de estabilización (acción separada — NO parte del flujo de deploy)
+
+- `develop` → `main`
 - Solo cuando el usuario confirma explícitamente que la feature es estable en producción
-- El agente NO lo crea automáticamente bajo ninguna circunstancia
+- El agente jamás lo crea automáticamente
 
 ## Validación del diff al crear PR
 
-Antes de notificar al usuario que el PR fue creado, verificar con `gh pr diff`:
+Antes de notificar al usuario, verificar con `gh pr diff`:
 - Archivos esperados en deploy QA: `manifest.json`, archivos CSS/SCSS renombrados, `store/**/*.json`
-- Archivos esperados en deploy Prod: mismos que QA pero con vendor_prod
-- Si hay archivos inesperados (fuera de los patrones anteriores) → alertar al usuario antes de continuar
+- Si hay archivos inesperados fuera de esos patrones → alertar al usuario antes de continuar
 
-## Formato del PR
+## Detección de estado de vendor en feature branch
 
-- Título: `[QA] {rama}` o `[PROD] {rama}`
-- Body incluir: app, versión, vendor destino, archivos transformados
+Si se detecta `vendor == vendor_qa` en una feature branch:
+- Advertir: "vendor_qa commiteado en feature branch. Recuerda revertir antes del PR a develop: `git checkout -- manifest.json styles/`"
+- Esta situación ocurre cuando el desarrollador commiteó la transformación local durante el desarrollo en QA
 
 <vtex-rules>
 ## Reglas del skill
 
-- NUNCA hacer push directo a main/master — siempre via PR desde develop/dev
-- NUNCA mergear a main/master como parte del flujo de deploy automático
-- SIEMPRE esperar confirmación del usuario de que el PR fue aprobado y mergeado antes de continuar
+- NUNCA hacer push directo a main/master — siempre via PR desde develop
+- NUNCA mergear `qa` hacia `develop` o `main` — es una rama one-way
+- NUNCA crear el PR a `qa` antes del deploy — se crea al final como registro
 - SIEMPRE validar el diff del PR y alertar si hay archivos inesperados
+- SIEMPRE advertir si se detecta vendor_qa commiteado en una feature branch
 - El PR de develop → main es decisión exclusiva del usuario — el agente jamás lo crea automáticamente
 </vtex-rules>
