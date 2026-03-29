@@ -10,14 +10,16 @@ Antes de cualquier operación de deploy, leer:
 
 ## Skills disponibles
 
-- `vtex-deploy-qa` — flujo completo de deploy a QA (qa:full y qa:release)
-- `vtex-deploy-prod` — flujo de deploy a Producción
-- `vtex-transform` — transformación de archivos para cambio de vendor
-- `vtex-git-flow` — gestión de ramas Git y Pull Requests
+Antes de ejecutar cualquier flujo, lee el archivo del skill correspondiente usando Read:
+
+- `.agents/skills/vtex-deploy-qa/SKILL.md` — flujo completo de deploy a QA (qa:full y qa:release)
+- `.agents/skills/vtex-deploy-prod/SKILL.md` — flujo de deploy a Producción
+- `.agents/skills/vtex-transform/SKILL.md` — transformación de archivos para cambio de vendor
+- `.agents/skills/vtex-git-flow/SKILL.md` — gestión de ramas Git y Pull Requests
 
 ## Commands disponibles
 
-- `deploy` — instrucciones paso a paso del flujo de deploy completo
+- `.agents/commands/deploy.md` — instrucciones paso a paso del flujo de deploy completo
 
 <vtex-rules>
 ## Reglas críticas de orquestación
