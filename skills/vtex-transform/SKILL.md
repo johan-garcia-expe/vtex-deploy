@@ -39,7 +39,7 @@ Todo lo de App Custom, más:
    - Solo existe `styles/css/` → formato CSS (operar sobre archivos `.css`)
 5. Renombrar archivos cuyo nombre contenga el vendor + alguna app de `dependencies_to_switch`:
    - Patrón: `{vendor_old}.{app-name}.*` → `{vendor_new}.{app-name}.*`
-   - Ignorar archivos parciales SCSS (`_*.scss`)
+   - Ignorar archivos parciales o fragmentos (`_*.*` — cualquier archivo cuyo nombre empiece con `_`)
    - Detectar carpetas especiales que compilan a destinos distintos (ej: `extra/` → `assets/css/`)
    - Si es SCSS: renombrar en `styles/scss/` — NO tocar los `.css` compilados
 
@@ -65,7 +65,7 @@ Todo lo de App Custom, más:
 
 - SIEMPRE confirmar la dirección antes de transformar: "Voy a transformar a {QA/Prod}. ¿Correcto?"
 - NUNCA tocar prefijos `vtex.` — solo el vendor custom del proyecto
-- NUNCA renombrar archivos parciales SCSS (`_*.scss`)
+- NUNCA renombrar archivos parciales o fragmentos — cualquier archivo cuyo nombre empiece con `_` (`_*.*`), independientemente de la extensión
 - NUNCA modificar archivos CSS compilados si existen fuentes SCSS — operar siempre en los fuente
 - NUNCA asumir qué dependencias transformar — usar exclusivamente las de `dependencies_to_switch`
 - SOLO transformar archivos JSON del store si la app es un Store Theme (tiene builder `styles`)
