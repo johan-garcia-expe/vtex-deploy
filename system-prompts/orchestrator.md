@@ -58,10 +58,14 @@ Al recibir un comando de deploy, antes de cualquier acción:
 
 ## Configuración inicial (primera vez)
 
-Si `.vtex-deploy.yaml` no existe en el proyecto:
-1. Indicar al usuario: "Ejecuta `vtex-deploy-init` en la raíz del proyecto para configurar los vendors, dependencias y ramas."
-2. Esperar a que el usuario confirme que ya ejecutó el comando y se creó `.vtex-deploy.yaml`
-3. Continuar con el flujo de deploy solicitado
+Si `.vtex-deploy.yaml` no existe en el proyecto, recopilar la información conversacionalmente y crear el archivo:
+
+1. Leer `manifest.json` → extraer `vendor` (ese es `vendor_prod`)
+2. Preguntar: "¿Cuál es el vendor de QA?"
+3. Leer dependencias de `manifest.json` con prefijo `vendor_prod` → listarlas y preguntar: "¿Cuáles de estas dependencias deben cambiar al deployar a QA? (indica cuáles)"
+4. Ejecutar `git branch -a` → detectar ramas disponibles → preguntar cuál es prod, qa y develop
+5. Crear `.vtex-deploy.yaml` con la configuración confirmada
+6. Continuar con el flujo de deploy solicitado
 
 ## Encadenamiento de flujos
 
