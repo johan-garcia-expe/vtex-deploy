@@ -30,24 +30,16 @@ function detectInstalledAgents(destPath: string): string[] {
 }
 
 // Copia skills, rules y commands a .agents/ del proyecto destino
-function copyCanonicalFiles(destPath: string, useSymlinks: boolean) {
+function copyCanonicalFiles(destPath: string) {
   const agentsDir = join(destPath, ".agents");
+  mkdirSync(agentsDir, { recursive: true });
   const dirs = ["skills", "rules", "commands"];
 
   for (const dir of dirs) {
     const src = join(INSTALLER_ROOT, dir);
     const dest = join(agentsDir, dir);
     mkdirSync(dest, { recursive: true });
-
-    if (useSymlinks) {
-      try {
-        if (!existsSync(dest)) symlinkSync(src, dest, "dir");
-      } catch {
-        cpSync(src, dest, { recursive: true });
-      }
-    } else {
-      cpSync(src, dest, { recursive: true });
-    }
+    cpSync(src, dest, { recursive: true });
   }
 }
 
@@ -183,7 +175,7 @@ async function main() {
   // Fase A — Copias canónicas
   spinner.start("Copiando archivos a .agents/...");
   const installDest = scope === "global" ? process.env.HOME! : destPath;
-  copyCanonicalFiles(installDest, true);
+  copyCanonicalFiles(installDest);
   spinner.stop("Archivos copiados a .agents/");
 
   // Fase B — Generar archivos nativos por agente

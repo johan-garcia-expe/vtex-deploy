@@ -1,5 +1,5 @@
 import * as p from "@clack/prompts";
-import { readFileSync, writeFileSync, mkdirSync, existsSync, symlinkSync, cpSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, cpSync } from "fs";
 import { resolve, join, dirname } from "path";
 import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,25 +27,15 @@ function detectInstalledAgents(destPath) {
     return detected;
 }
 // Copia skills, rules y commands a .agents/ del proyecto destino
-function copyCanonicalFiles(destPath, useSymlinks) {
+function copyCanonicalFiles(destPath) {
     const agentsDir = join(destPath, ".agents");
+    mkdirSync(agentsDir, { recursive: true });
     const dirs = ["skills", "rules", "commands"];
     for (const dir of dirs) {
         const src = join(INSTALLER_ROOT, dir);
         const dest = join(agentsDir, dir);
         mkdirSync(dest, { recursive: true });
-        if (useSymlinks) {
-            try {
-                if (!existsSync(dest))
-                    symlinkSync(src, dest, "dir");
-            }
-            catch {
-                cpSync(src, dest, { recursive: true });
-            }
-        }
-        else {
-            cpSync(src, dest, { recursive: true });
-        }
+        cpSync(src, dest, { recursive: true });
     }
 }
 // Inyecta el orchestrator en un archivo nativo usando marker-based merge
@@ -178,7 +168,7 @@ async function main() {
     // Fase A — Copias canónicas
     spinner.start("Copiando archivos a .agents/...");
     const installDest = scope === "global" ? process.env.HOME : destPath;
-    copyCanonicalFiles(installDest, true);
+    copyCanonicalFiles(installDest);
     spinner.stop("Archivos copiados a .agents/");
     // Fase B — Generar archivos nativos por agente
     spinner.start("Generando archivos de configuración para los agentes...");
