@@ -58,14 +58,21 @@ Al recibir un comando de deploy, antes de cualquier acción:
 
 ## Configuración inicial (primera vez)
 
-Si `.vtex-deploy.yaml` no existe en el proyecto, recopilar la información conversacionalmente y crear el archivo:
+Si `.vtex-deploy.yaml` no existe, hacer UNA pregunta a la vez y detectar todo lo posible automáticamente:
 
-1. Leer `manifest.json` → extraer `vendor` (ese es `vendor_prod`)
-2. Preguntar: "¿Cuál es el vendor de QA?"
-3. Leer dependencias de `manifest.json` con prefijo `vendor_prod` → listarlas y preguntar: "¿Cuáles de estas dependencias deben cambiar al deployar a QA? (indica cuáles)"
-4. Ejecutar `git branch -a` → detectar ramas disponibles → preguntar cuál es prod, qa y develop
-5. Crear `.vtex-deploy.yaml` con la configuración confirmada
-6. Continuar con el flujo de deploy solicitado
+**Paso 1 — vendor_prod:** Leer `manifest.json` → mostrar el vendor detectado → confirmar: "Detecté vendor_prod: `{vendor}`. ¿Es correcto? (s/n)"
+
+**Paso 2 — vendor_qa:** Preguntar únicamente: "¿Cuál es el vendor de QA?"
+
+**Paso 3 — dependencies_to_switch:** Leer todas las dependencias de `manifest.json` con prefijo `vendor_prod` → preguntar: "Encontré estas dependencias con prefijo `{vendor_prod}`: [lista]. ¿Deben cambiar TODAS al deployar a QA? (s / no — indica cuáles excluir)"
+- Si responde "s" o "todas" → usar todas
+- Si excluye algunas → usar las restantes
+
+**Paso 4 — branches:** Ejecutar `git branch -a` → si existen ramas llamadas `develop`, `qa` y `main`/`master`, asumir ese mapeo y mostrar: "Detecté ramas: develop → develop, qa → qa, prod → main. ¿Correcto? (s/n)"
+- Si no → preguntar el mapeo que falta
+
+**Paso 5 — crear archivo:** Mostrar el YAML resultante y preguntar: "¿Creo el archivo con esta configuración? (s/n)"
+- Si confirma → crear `.vtex-deploy.yaml` y continuar con el deploy
 
 ## Encadenamiento de flujos
 
