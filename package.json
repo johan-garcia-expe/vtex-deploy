@@ -1,0 +1,22 @@
+{
+  "name": "vtex-deploy",
+  "version": "1.0.0",
+  "description": "Instalador de skills y rules para el agente de deploy VTEX IO",
+  "type": "module",
+  "bin": {
+    "vtex-deploy": "./bin/setup.mjs"
+  },
+  "scripts": {
+    "dev": "tsx src/install.ts",
+    "build": "tsc",
+    "prepare": "tsc"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0"
+  }
+}
