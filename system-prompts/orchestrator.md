@@ -64,10 +64,19 @@ Si `.vtex-deploy.yaml` no existe, hacer UNA pregunta a la vez y detectar todo lo
 
 **Paso 2 — vendor_qa:** Preguntar únicamente: "¿Cuál es el vendor de QA?"
 
-**Paso 3 — dependencies_to_switch:** Leer todas las dependencias de `manifest.json` con prefijo `vendor_prod` → mostrar la lista y preguntar: "¿Cuáles de estas dependencias deben cambiar al deployar a QA? (todas / ninguna / lista las que sí)"
+**Paso 3 — dependencies_to_switch:** Leer todas las dependencias de `manifest.json` con prefijo `vendor_prod` → mostrarlas numeradas y preguntar: "¿Cuáles deben cambiar al deployar a QA? (todas / ninguna / números o nombres)"
+
+Ejemplo de presentación:
+```
+ 1. papajohns.components
+ 2. papajohns.shelf
+ 3. papajohns.minicart
+ ...
+```
 - "todas" → usar todas
 - "ninguna" → lista vacía
-- Lista de nombres → usar solo las mencionadas
+- "1 3 5" o "1, 3, 5" → usar las de esos números
+- Nombres directos → usar las mencionadas
 
 **Paso 4 — branches:** Ejecutar `git branch -a` → si existen ramas llamadas `develop`, `qa` y `main`/`master`, asumir ese mapeo y mostrar: "Detecté ramas: develop → develop, qa → qa, prod → main. ¿Correcto? (s/n)"
 - Si no → preguntar el mapeo que falta
