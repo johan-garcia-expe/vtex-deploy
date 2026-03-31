@@ -59,6 +59,9 @@ Todo lo de App Custom, más:
 7. Mostrar resumen completo de archivos modificados (listado)
 8. Preguntar: "¿Los cambios son correctos? (s/n)"
    - No → revertir cambios y PARAR
+9. Actualizar `deploy_state.phase` en `.vtex-deploy.yaml`:
+   - Dirección `to_qa` → `phase: transformed`
+   - Dirección `to_prod` → `phase: prod_transformed`
 
 <vtex-rules>
 ## Reglas del skill
@@ -71,4 +74,5 @@ Todo lo de App Custom, más:
 - SOLO transformar archivos JSON del store si la app es un Store Theme (tiene builder `styles`)
 - SOLO renombrar archivos de estilos cuyo nombre contenga una app de `dependencies_to_switch`
 - SIEMPRE mostrar resumen completo de archivos modificados y pedir confirmación
+- SIEMPRE actualizar deploy_state.phase en .vtex-deploy.yaml después de una transformación exitosa
 </vtex-rules>
