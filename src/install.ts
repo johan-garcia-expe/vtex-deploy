@@ -118,6 +118,23 @@ function updateGitignore(destPath: string) {
   if (added) writeFileSync(gitignorePath, content, "utf-8");
 }
 
+// Copia los subagentes a .claude/agents/ del proyecto destino (solo Claude Code)
+function copyAgentDefinitions(destPath: string) {
+  const agentsDir = join(destPath, ".claude", "agents");
+  mkdirSync(agentsDir, { recursive: true });
+  const src = join(INSTALLER_ROOT, "agents");
+  cpSync(src, agentsDir, { recursive: true });
+}
+
+// Copia vtex-deploy-safety.md a .claude/rules/ del proyecto destino (solo Claude Code)
+function copyScopedRules(destPath: string) {
+  const rulesDir = join(destPath, ".claude", "rules");
+  mkdirSync(rulesDir, { recursive: true });
+  const src = join(INSTALLER_ROOT, "rules", "vtex-deploy-safety.md");
+  const dest = join(rulesDir, "vtex-deploy-safety.md");
+  cpSync(src, dest);
+}
+
 // Copia la config operativa al proyecto destino
 function copyConfig(destPath: string) {
   const configSrc = join(INSTALLER_ROOT, ".vtex-deploy", "config.yaml");
@@ -233,7 +250,24 @@ async function main() {
   // Fase D — .gitignore
   updateGitignore(installDest);
 
-  p.outro("vtex-deploy instalado correctamente. El agente ya tiene acceso a los skills de deploy VTEX IO.\n  Ejecuta vtex-deploy-init para configurar el proyecto.");
+  // Fase E — Sub-agentes Claude Code (.claude/agents/)
+  if ((selectedAgents as string[]).includes("Claude Code")) {
+    spinner.start("Copiando sub-agentes a .claude/agents/...");
+    copyAgentDefinitions(installDest);
+    spinner.stop("Sub-agentes copiados a .claude/agents/");
+
+    // Fase F — Reglas scoped (.claude/rules/)
+    spinner.start("Copiando reglas scoped a .claude/rules/...");
+    copyScopedRules(installDest);
+    spinner.stop("Reglas copiadas a .claude/rules/");
+  }
+
+  p.outro(
+    "vtex-deploy instalado correctamente. El agente ya tiene acceso a los skills de deploy VTEX IO.\n" +
+    "  Ejecuta vtex-deploy-init para configurar el proyecto.\n\n" +
+    "  Recomendación para sesiones largas de deploy:\n" +
+    "  CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50 claude"
+  );
 }
 
 main().catch((err) => {
