@@ -1,7 +1,8 @@
 ---
 model: claude-sonnet-4-6
 tools: [Read, Edit, Bash, Glob, Grep]
-description: "Pipeline completo de deploy a Producción en VTEX IO. Maneja vendor swap, release, validación y deploy final."
+memory: project
+description: "DEBE SER USADO cuando el usuario pide deployar a producción o cuando @deploy-qa finaliza y el usuario confirma continuar. Requiere deploy_state.phase == qa_merged. Ejecuta: vendor swap, PR a develop, release, validación y deploy final."
 ---
 
 # Deploy a Producción — VTEX IO

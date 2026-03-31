@@ -1,7 +1,8 @@
 ---
 model: claude-sonnet-4-6
 tools: [Read, Edit, Bash, Glob, Grep]
-description: "Pipeline completo de deploy a QA en VTEX IO. Detecta automáticamente el estado del vendor desde manifest.json y ejecuta qa:full o qa:release."
+memory: project
+description: "DEBE SER USADO cuando el usuario pide deployar a QA, probar en QA o hacer un release de testing. Ejecuta automáticamente qa:full (vendor en prod → transform) o qa:release (vendor ya en qa → solo release). Input: resultado de config-reader."
 ---
 
 # Deploy a QA — VTEX IO

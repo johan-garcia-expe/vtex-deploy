@@ -1,7 +1,8 @@
 ---
 model: claude-sonnet-4-6
 tools: [Read, Edit, Glob, Grep]
-description: "Transformación de archivos para cambio de vendor entre QA y Producción. Soporta App Custom y Store Theme."
+memory: project
+description: "Usar proactivamente cuando se necesite transformar vendor fuera de un deploy activo, o cuando @deploy-qa/@deploy-prod delegan la transformación. Detecta automáticamente App Custom vs Store Theme desde manifest.json."
 ---
 
 # Transformación de archivos — Vendor Swap

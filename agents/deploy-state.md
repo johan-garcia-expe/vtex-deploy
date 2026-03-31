@@ -1,7 +1,7 @@
 ---
 model: claude-haiku-4-5-20251001
 tools: [Read, Edit]
-description: "Lee y escribe el campo deploy_state en .vtex-deploy.yaml para rastrear el progreso del deploy."
+description: "DEBE SER USADO proactivamente después de cada fase del deploy para actualizar deploy_state en .vtex-deploy.yaml. También invocarlo para leer el estado actual o limpiarlo al finalizar producción."
 ---
 
 # Deploy State Manager

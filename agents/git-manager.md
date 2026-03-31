@@ -1,7 +1,7 @@
 ---
 model: claude-haiku-4-5-20251001
 tools: [Bash, Read]
-description: "Gestión de ramas Git y Pull Requests para el flujo de deploy VTEX IO. Crea ramas, hace push y abre PRs según el contexto."
+description: "Usar proactivamente para operaciones Git aisladas fuera del flujo de deploy: crear ramas, push, PRs o limpiar ramas deploy/*. No invocar dentro de @deploy-qa o @deploy-prod que ya tienen Git integrado."
 ---
 
 # Git Flow — Deploy VTEX IO

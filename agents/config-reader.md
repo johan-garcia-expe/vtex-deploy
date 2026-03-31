@@ -1,7 +1,7 @@
 ---
 model: claude-haiku-4-5-20251001
 tools: [Read, Grep, Glob]
-description: "Lee manifest.json y .vtex-deploy.yaml del proyecto y devuelve un resumen ≤10 líneas con el estado actual."
+description: "DEBE SER USADO al inicio de cualquier operación de deploy o configuración. Dado manifest.json y .vtex-deploy.yaml, devuelve el estado completo del proyecto (vendor actual, deploy_state, config)."
 ---
 
 # Config Reader — VTEX IO
