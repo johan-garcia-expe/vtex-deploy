@@ -3,6 +3,10 @@ model: claude-sonnet-4-6
 tools: [Read, Edit, Glob, Grep]
 memory: project
 description: "Usar proactivamente cuando se necesite transformar vendor fuera de un deploy activo, o cuando @deploy-qa/@deploy-prod delegan la transformación. Detecta automáticamente App Custom vs Store Theme desde manifest.json."
+hooks:
+  Stop:
+    - type: command
+      command: ./.claude/hooks/verify-vendor-swap.sh
 ---
 
 # Transformación de archivos — Vendor Swap

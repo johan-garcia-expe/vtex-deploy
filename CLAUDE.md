@@ -26,6 +26,7 @@ Los subagentes se instalan en `.claude/agents/` del proyecto destino vía `src/i
 
 ```
 agents/          ← definiciones de subagentes (frontmatter + instrucciones)
+hooks/           ← scripts de quality gate (Stop hooks) instalados en .claude/hooks/
 commands/        ← comandos de usuario (/deploy, /checkpoint)
 rules/           ← reglas scoped que se instalan en .claude/rules/
 skills/          ← skills para otros agentes (Cursor, Copilot, Windsurf...)
@@ -103,7 +104,7 @@ Los flujos de deploy están alineados con el patrón real de proyectos VTEX IO c
 
 ### Alta prioridad
 - [ ] **Instrucciones de memoria** en `deploy-qa.md`, `deploy-prod.md` y `vendor-transformer.md` — `memory: project` está configurado pero los agentes no tienen reglas explícitas de qué guardar ni cuándo
-- [ ] **`src/install.ts`** — agregar `copyAgentDefinitions()` y `copyScopedRules()` para instalar `.claude/agents/` y `.claude/rules/` en proyectos destino (actualmente solo instala `.agents/skills/`)
+- [ ] **`src/install.ts`** — agregar `copyAgentDefinitions()`, `copyScopedRules()` y `copyHooks()` para instalar `.claude/agents/`, `.claude/rules/` y `.claude/hooks/` en proyectos destino (actualmente solo instala `.agents/skills/`)
 
 ### Media prioridad
 - [ ] **Validación del diff** en `git-manager.md` — lógica de `gh pr diff` documentada pero sin paths específicos por tipo de app (Custom vs Theme)
