@@ -65,6 +65,30 @@ Solo para agentes que acumulan conocimiento entre sesiones:
 
 ---
 
+## Estado actual de los flujos (al 2026-04-01)
+
+Los flujos de deploy están alineados con el patrón real de proyectos VTEX IO con ambiente QA separado (vendor_prod / vendor_qa).
+
+### Flujos implementados y validados
+- **qa:full** — vendor en prod → transform + release + workspace + deploy
+- **qa:release** — vendor ya en QA → solo release + workspace + deploy
+- **prod:from-qa** — QA completado → `vtex publish --verbose` (sin release, versión ya bumpeada)
+- **prod:direct** — sin QA previo → `vtex release` + workspace + deploy
+
+### Invariantes críticos en los flujos
+| Regla | Agente |
+|-------|--------|
+| `deploy/qa-*` se crea desde `feature/*` | git-manager, deploy-qa |
+| `deploy/prod-*` se crea desde `qa` | git-manager, deploy-prod |
+| NO `vtex release` en `prod:from-qa` | deploy-prod |
+| `vtex use master` antes de `vtex deploy -f` | deploy-prod |
+| `.claude/` en `.gitignore` antes del release | deploy-qa |
+| `git push --set-upstream` antes del release | deploy-qa, git-manager |
+| CHANGELOG antes del release | deploy-qa, deploy-prod |
+| Workspace `prod{fecha}` sin guiones | deploy-prod |
+
+---
+
 ## Bugs conocidos de Claude Code
 
 | Bug | Impacto | Mitigación |
@@ -78,17 +102,16 @@ Solo para agentes que acumulan conocimiento entre sesiones:
 ## Áreas de mejora pendientes
 
 ### Alta prioridad
-- [ ] **Añadir instrucciones de memoria** en el cuerpo de `deploy-qa.md`, `deploy-prod.md` y `vendor-transformer.md` — el campo `memory: project` está configurado pero los agentes no tienen reglas explícitas de qué guardar ni cuándo
+- [ ] **Instrucciones de memoria** en `deploy-qa.md`, `deploy-prod.md` y `vendor-transformer.md` — `memory: project` está configurado pero los agentes no tienen reglas explícitas de qué guardar ni cuándo
 - [ ] **`src/install.ts`** — agregar `copyAgentDefinitions()` y `copyScopedRules()` para instalar `.claude/agents/` y `.claude/rules/` en proyectos destino (actualmente solo instala `.agents/skills/`)
 
 ### Media prioridad
-- [ ] **Validación del diff** en `git-manager.md` — actualmente la lógica de `gh pr diff` está documentada pero no tiene paths específicos por tipo de app (Custom vs Theme)
+- [ ] **Validación del diff** en `git-manager.md` — lógica de `gh pr diff` documentada pero sin paths específicos por tipo de app (Custom vs Theme)
 - [ ] **Orquestador** — agregar detección de `deploy_state.phase == prod_*` para reanudar flujos de producción interrumpidos (actualmente solo detecta fases QA)
-- [ ] **`commands/checkpoint.md`** — documentar formato de `session-state.md` para que sea parseable por el orquestador al retomar
+- [ ] **Soporte multi-vendor** en `vendor-transformer.md` (proyectos con más de 2 cuentas)
 
 ### Baja prioridad
-- [ ] Soporte multi-vendor en `vendor-transformer.md` (proyectos con más de 2 cuentas)
-- [ ] Agregar subagente `@release-validator` (Haiku) que analice el output de `vtex release` y detecte errores de compilación sin contaminar el contexto de `deploy-qa`
+- [ ] Subagente `@release-validator` (Haiku) que analice el output de `vtex release` y detecte errores de compilación sin contaminar el contexto de `deploy-qa`
 
 ---
 
@@ -106,6 +129,5 @@ Solo para agentes que acumulan conocimiento entre sesiones:
 ```
 1. Lee este archivo
 2. Lee agents/*.md para ver el estado actual de los subagentes
-3. Lee MIGRATION_PLAN.md para historial de decisiones de arquitectura
-4. Lee src/install.ts para entender el flujo de instalación
+3. Lee src/install.ts para entender el flujo de instalación
 ```
