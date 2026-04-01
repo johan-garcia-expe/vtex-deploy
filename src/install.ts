@@ -105,7 +105,7 @@ function injectOrchestrator(filePath: string, orchestratorContent: string, forma
 // Agrega entradas al .gitignore
 function updateGitignore(destPath: string) {
   const gitignorePath = join(destPath, ".gitignore");
-  const entries = [".agents/", ".vtex-deploy/"];
+  const entries = [".agents/", ".vtex-deploy/", ".claude/"];
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf-8") : "";
 
   let added = false;
@@ -133,6 +133,16 @@ function copyScopedRules(destPath: string) {
   const src = join(INSTALLER_ROOT, "rules", "vtex-deploy-safety.md");
   const dest = join(rulesDir, "vtex-deploy-safety.md");
   cpSync(src, dest);
+}
+
+// Copia los hooks de quality gate a .claude/hooks/ del proyecto destino (solo Claude Code)
+function copyHooks(destPath: string) {
+  const hooksDir = join(destPath, ".claude", "hooks");
+  mkdirSync(hooksDir, { recursive: true });
+  const src = join(INSTALLER_ROOT, "hooks");
+  if (existsSync(src)) {
+    cpSync(src, hooksDir, { recursive: true });
+  }
 }
 
 // Copia la config operativa al proyecto destino
@@ -260,6 +270,11 @@ async function main() {
     spinner.start("Copiando reglas scoped a .claude/rules/...");
     copyScopedRules(installDest);
     spinner.stop("Reglas copiadas a .claude/rules/");
+
+    // Fase G — Hooks de quality gate (.claude/hooks/)
+    spinner.start("Copiando hooks de quality gate a .claude/hooks/...");
+    copyHooks(installDest);
+    spinner.stop("Hooks copiados a .claude/hooks/");
   }
 
   p.outro(

@@ -113,11 +113,14 @@ La versión ya fue bumpeada durante el deploy a QA. Solo publicar:
 11. Verificar que CHANGELOG esté actualizado. Si no → preguntar: "¿Deseas actualizar el CHANGELOG antes del release? (s/n)"
 12. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
 13. `yes | vtex release {tipo} {canal}`
-14. Analizar output:
-    - Publish automático exitoso (postrelease) → confirmar con `y` al prompt de publish
-    - Sin publish automático → `yes | vtex publish --verbose`
-    - `tag already exists` → hacer un nuevo release patch para incrementar la versión
-    - Compilación fallida → mostrar error completo y PARAR
+14. Guiar al usuario: "Confirma con `y` el publish que aparece durante el release"
+15. Pasar el output completo a `@release-validator` y actuar según el estado devuelto:
+    - `SUCCESS` → continuar
+    - `PUBLISH_PENDING` → ejecutar `yes | vtex publish --verbose`
+    - `TAG_EXISTS` → ejecutar `vtex release patch {canal}` para incrementar versión
+    - `BUILD_ERROR` → mostrar detalle del error y PARAR
+    - `PUBLISH_ERROR` → reintentar `vtex publish --verbose`; si falla de nuevo → PARAR
+    - `AUTH_ERROR` → verificar cuenta con `vtex whoami` y hacer switch
 
 ## Fase 6 — Instalación y Validación
 
@@ -152,6 +155,30 @@ La versión ya fue bumpeada durante el deploy a QA. Solo publicar:
 
 24. Reporte final: app, versión, vendor, workspace, timestamp, ambientes desplegados
 25. Nota: el PR de develop → main se crea cuando el usuario confirme que la feature es estable en producción (acción separada — no parte de este flujo)
+
+## Memoria del proyecto
+
+Usa `memory: project` para acumular conocimiento entre sesiones sobre **este proyecto específico**.
+
+### Qué guardar
+- **Flujo preferido:** si el proyecto casi siempre viene de QA (`prod:from-qa`) o hace deploys directos (`prod:direct`), recordarlo
+- **Preferencias de release en prod:direct:** tipo (patch/minor) y canal (stable/beta) que usa habitualmente
+- **Validación de workspace:** pasos extra de validación que el usuario realiza antes de aprobar (ej: siempre verifica una URL específica)
+- **Site Editor:** si el proyecto migra Site Editor en cada deploy o nunca lo hace
+- **Correcciones del usuario:** si corrige un paso, guardar la corrección y su motivo
+
+### Cuándo guardar
+- Después del primer deploy a producción exitoso de la sesión
+- Cuando el usuario corrige explícitamente un paso o preferencia
+- Cuando se identifica un patrón recurrente en el flujo de producción
+
+### Qué NO guardar
+- `deploy_state` — vive en `.vtex-deploy.yaml`
+- Números de versión — cambian en cada deploy
+- Nombre del workspace de producción — se genera por fecha
+- Configuración de vendor/branches — ya está en `.vtex-deploy.yaml`
+
+---
 
 <vtex-rules>
 ## Reglas del agente

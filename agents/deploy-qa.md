@@ -102,12 +102,14 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
     - Nombre solo letras y números, sin guiones ni espacios (ej: `deploy20260328`)
 11. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
 12. `vtex release {tipo} {canal}`
-13. Analizar output:
-    - El release pedirá confirmación del publish (postrelease) → guiar al usuario: "Confirma con `y` el publish que aparece"
-    - Publish automático confirmado → continuar
-    - Sin publish automático → `vtex publish` manualmente
-    - `tag already exists` → la versión ya fue usada en otro vendor; hacer un nuevo release patch: `vtex release patch {canal}`
-    - Compilación fallida → mostrar error completo y PARAR
+13. Guiar al usuario: "Confirma con `y` el publish que aparece durante el release"
+14. Pasar el output completo a `@release-validator` y actuar según el estado devuelto:
+    - `SUCCESS` → continuar
+    - `PUBLISH_PENDING` → ejecutar `vtex publish` manualmente
+    - `TAG_EXISTS` → ejecutar `vtex release patch {canal}` para incrementar versión
+    - `BUILD_ERROR` → mostrar detalle del error y PARAR
+    - `PUBLISH_ERROR` → reintentar `vtex publish --verbose`; si falla de nuevo → PARAR
+    - `AUTH_ERROR` → verificar cuenta con `vtex whoami` y hacer switch si es necesario
 
 ### Fase Instalación y Validación
 14. `vtex install` (en el workspace creado en paso 10)
@@ -196,6 +198,29 @@ Punto de entrada: código ya en estado QA (vendor == vendor_qa). Omite deploy br
 
 ### Fin
 15. Reporte + preguntar si continuar a Producción
+
+## Memoria del proyecto
+
+Usa `memory: project` para acumular conocimiento entre sesiones sobre **este proyecto específico**.
+
+### Qué guardar
+- **Preferencias de release:** si el usuario siempre elige `patch stable`, recordarlo para sugerirlo por defecto la próxima vez
+- **Site Editor:** si el proyecto usa Site Editor activamente (el usuario responde `s` frecuentemente) o nunca lo usa
+- **Quirks del proyecto:** errores recurrentes específicos de este proyecto (ej: un archivo extra que siempre necesita transformación, un workspace que siempre falla por nombre)
+- **Correcciones del usuario:** si el usuario corrige un paso del flujo, guardar la corrección y su motivo
+
+### Cuándo guardar
+- Después del primer deploy exitoso de la sesión
+- Cuando el usuario corrige explícitamente un paso o preferencia
+- Cuando se descubre un quirk no documentado en `.vtex-deploy.yaml`
+
+### Qué NO guardar
+- `deploy_state` — vive en `.vtex-deploy.yaml`, no en memoria
+- Números de versión — cambian en cada deploy
+- Nombres de workspace activo — estado efímero
+- Configuración de vendor/branches — ya está en `.vtex-deploy.yaml`
+
+---
 
 <vtex-rules>
 ## Reglas del agente

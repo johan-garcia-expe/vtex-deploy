@@ -15,7 +15,8 @@ system-prompts/orchestrator.md   ← routing puro, sin lógica de deploy
       ├── agents/deploy-prod.md        (Sonnet + memory:project)
       ├── agents/vendor-transformer.md (Sonnet + memory:project)
       ├── agents/git-manager.md        (Haiku)
-      └── agents/deploy-state.md       (Haiku)
+      ├── agents/deploy-state.md       (Haiku)
+      └── agents/release-validator.md  (Haiku) ← analiza output de vtex release/publish
 ```
 
 Los subagentes se instalan en `.claude/agents/` del proyecto destino vía `src/install.ts`.
@@ -102,17 +103,8 @@ Los flujos de deploy están alineados con el patrón real de proyectos VTEX IO c
 
 ## Áreas de mejora pendientes
 
-### Alta prioridad
-- [ ] **Instrucciones de memoria** en `deploy-qa.md`, `deploy-prod.md` y `vendor-transformer.md` — `memory: project` está configurado pero los agentes no tienen reglas explícitas de qué guardar ni cuándo
-- [ ] **`src/install.ts`** — agregar `copyAgentDefinitions()`, `copyScopedRules()` y `copyHooks()` para instalar `.claude/agents/`, `.claude/rules/` y `.claude/hooks/` en proyectos destino (actualmente solo instala `.agents/skills/`)
-
 ### Media prioridad
-- [ ] **Validación del diff** en `git-manager.md` — lógica de `gh pr diff` documentada pero sin paths específicos por tipo de app (Custom vs Theme)
-- [ ] **Orquestador** — agregar detección de `deploy_state.phase == prod_*` para reanudar flujos de producción interrumpidos (actualmente solo detecta fases QA)
-- [ ] **Soporte multi-vendor** en `vendor-transformer.md` (proyectos con más de 2 cuentas)
-
-### Baja prioridad
-- [ ] Subagente `@release-validator` (Haiku) que analice el output de `vtex release` y detecte errores de compilación sin contaminar el contexto de `deploy-qa`
+- [ ] **Soporte multi-vendor** en `vendor-transformer.md` (proyectos con más de 2 cuentas vendor)
 
 ---
 

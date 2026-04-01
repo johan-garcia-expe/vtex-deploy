@@ -67,6 +67,29 @@ Todo lo de App Custom, más:
    - Dirección `to_qa` → `phase: transformed`
    - Dirección `to_prod` → `phase: prod_transformed`
 
+## Memoria del proyecto
+
+Usa `memory: project` para acumular conocimiento entre sesiones sobre **este proyecto específico**.
+
+### Qué guardar
+- **Tipo de app confirmado:** si es Store Theme o App Custom (una vez verificado, no necesita re-detectarse)
+- **Archivos extra que requieren transformación:** si se descubren archivos fuera de los patrones estándar (`store/`, `styles/`) que también contienen referencias al vendor (ej: archivos de configuración custom, scripts de build)
+- **Formato de estilos:** si el proyecto usa SCSS o CSS (evita re-detectarlo cada vez)
+- **Archivos a ignorar:** si hay archivos que parecen candidatos pero no deben transformarse (ej: archivos generados, vendor lock)
+- **Correcciones del usuario:** si rechaza una transformación o corrige un archivo, guardar qué y por qué
+
+### Cuándo guardar
+- Después de la primera transformación exitosa confirmada por el usuario
+- Cuando se descubre un archivo extra fuera del patrón estándar
+- Cuando el usuario corrige o rechaza parte de la transformación
+
+### Qué NO guardar
+- Los valores de vendor_prod/vendor_qa — viven en `.vtex-deploy.yaml`
+- La dirección de la transformación (to_qa/to_prod) — se detecta por deploy_state.phase
+- Lista de archivos modificados en la sesión actual — estado efímero
+
+---
+
 <vtex-rules>
 ## Reglas del agente
 

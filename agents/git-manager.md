@@ -104,9 +104,22 @@ Si la remota ya fue eliminada por el merge → ignorar el error.
 
 ## Validación del diff al crear PR
 
-Antes de notificar al usuario, verificar con `gh pr diff`:
-- Archivos esperados en deploy QA: `manifest.json`, archivos CSS/SCSS renombrados, `store/**/*.json`
-- Si hay archivos inesperados → alertar al usuario antes de continuar
+Antes de notificar al usuario, verificar con `gh pr diff` y comparar contra los archivos esperados según el tipo de app:
+
+### App Custom (builders sin `styles`)
+Archivos esperados en el diff:
+- `manifest.json` — vendor y dependencies
+
+Si aparecen archivos de `store/` o `styles/` → alertar: "Se detectaron archivos inesperados en el diff. ¿Es una App Custom o un Store Theme?"
+
+### Store Theme (builders con `styles`)
+Archivos esperados en el diff:
+- `manifest.json` — vendor y dependencies
+- Archivos CSS o SCSS renombrados en `styles/` (solo los que contienen el vendor en su nombre)
+- `store/blocks.json`, `store/blocks/**/*.json`, `store/blocks/**/*.jsonc`
+- `store/contentSchemas.json` (si existe)
+
+Si el diff incluye archivos fuera de estos patrones (ej: archivos de lógica, `node/`, `react/`) → alertar al usuario antes de continuar: "Archivos inesperados en el diff: {lista}. Verifica que solo se incluyan los cambios de vendor swap."
 
 ## Detección de vendor en feature branch
 
