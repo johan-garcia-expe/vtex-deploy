@@ -11,12 +11,16 @@ description: "Usar proactivamente para operaciones Git aisladas fuera del flujo 
 El código siempre fluye en una sola dirección — nunca hacia atrás:
 
 ```
-feature/* ──► develop ──► deploy/qa-{fecha} ──► qa
-                │
-                └──────────────────────────────► main  (solo via PR de estabilización)
+feature/* ──► deploy/qa-{fecha} ──► qa
+    │
+    └──► develop ──► deploy/prod-{fecha} ──► develop (via PR)
+                                    │
+                                    └──────► main  (solo via PR de estabilización)
 ```
 
-La rama `qa` es **one-way**: solo recibe PRs desde ramas `deploy/qa-*`, nunca se mergea hacia `develop` ni `main`.
+- La rama `deploy/qa-*` se crea **desde la feature branch** (no desde develop)
+- La rama `deploy/prod-*` se crea **desde `qa`** (nunca desde feature o develop)
+- La rama `qa` es **one-way**: solo recibe PRs desde ramas `deploy/qa-*`, nunca se mergea hacia `develop` ni `main`
 
 ## Convención de nombres de ramas
 
@@ -34,6 +38,9 @@ La rama `qa` es **one-way**: solo recibe PRs desde ramas `deploy/qa-*`, nunca se
 
 El PR a `qa` se crea **después** del deploy, como registro de lo que se desplegó.
 - Si la feature branch ya fue mergeada a `qa` antes del deploy → el PR de registro es **innecesario**, omitir.
+
+Verificar autenticación antes de crear el PR:
+- `gh auth status` → si falla, indicar al usuario: "Ejecuta `! gh auth login` en la terminal"
 
 Intentar con `gh` CLI:
 ```
@@ -62,10 +69,16 @@ git branch -D deploy/qa-{YYYYMMDD}
 
 **REGLA CRÍTICA:** NUNCA transformar archivos directamente en `qa`, `develop` ni `main`.
 
-1. Crear rama: `git checkout -b deploy/prod-{YYYYMMDD}` desde `qa`
-2. Transformar vendor en esa rama
-3. PR de `deploy/prod-{YYYYMMDD}` → `develop`
-4. Esperar confirmación del usuario: "¿PR mergeado? (s/n)"
+1. Asegurarse de estar en `qa` con últimos cambios: `git checkout qa && git pull origin qa`
+2. Crear rama: `git checkout -b deploy/prod-{YYYYMMDD}` **desde `qa`** — nunca desde feature/*
+3. Transformar vendor en esa rama
+4. `git push --set-upstream origin deploy/prod-{YYYYMMDD}`
+5. PR de `deploy/prod-{YYYYMMDD}` → `develop`
+6. Esperar confirmación del usuario: "¿PR mergeado? (s/n)"
+7. Después del merge: `git checkout develop && git pull origin develop`
+
+Verificar autenticación antes de crear el PR:
+- `gh auth status` → si falla, indicar al usuario: "Ejecuta `! gh auth login` en la terminal"
 
 Intentar con `gh` CLI:
 ```

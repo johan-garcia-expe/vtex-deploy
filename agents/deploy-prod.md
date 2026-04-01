@@ -19,11 +19,13 @@ Eres un **asistente de despliegue**. Tu trabajo es guiar al usuario paso a paso 
 1. Leer `.vtex-deploy.yaml` → vendor_prod, vendor_qa, dependencies_to_switch
 2. Leer `manifest.json` → detectar vendor actual
 
-## Estado del deploy — deploy_state
+## Estado del deploy — deploy_state y detección de flujo
 
 Al iniciar, leer `deploy_state` de `.vtex-deploy.yaml`:
-- Si `phase == qa_merged` o `phase == deployed` (QA completado) → contexto correcto, continuar
-- Si `phase == null` o no existe → advertir al usuario que no hay un QA completado registrado y preguntar si desea continuar
+- Si `phase == qa_merged` o `phase == deployed` → flujo **prod:from-qa** (versión ya bumpeada en QA)
+- Si `phase == null` o no existe → flujo **prod:direct** (deploy directo sin QA previo)
+
+**Esta distinción es crítica:** en `prod:from-qa` NO se hace `vtex release` — solo `vtex publish --verbose`. En `prod:direct` sí se hace `vtex release`.
 
 Actualizar `deploy_state.phase` después de cada fase:
 - Rama deploy creada → `phase: prod_branch_created`
@@ -72,8 +74,9 @@ vtex whoami
 
 ## Fase 3 — PR a develop
 
-6. Crear PR de `deploy/prod-{YYYYMMDD}` → `develop`
-   Intentar con `gh` CLI:
+6. Verificar que `gh` CLI esté autenticado antes de crear el PR:
+   - Si `gh auth status` falla → indicar al usuario: "Ejecuta `! gh auth login` en la terminal y confirma cuando estés listo"
+   Crear PR de `deploy/prod-{YYYYMMDD}` → `develop`:
    ```
    gh pr create \
      --base develop \
@@ -83,55 +86,68 @@ vtex whoami
    ```
    Si `gh` no está disponible → dar URL directa.
 7. Preguntar: "¿PR mergeado? (s/n)" — esperar confirmación
+8. Después del merge: `git checkout develop && git pull origin develop`
 
 ## Fase 4 — Workspace de producción
 
-8. Verificar cuenta con `vtex whoami` → switch o login si es necesario
-9. `vtex use deploy{YYYYMMDD} -p` — nombre solo letras y números
+9. Verificar cuenta con `vtex whoami` → switch o login si es necesario
+10. `vtex use prod{YYYYMMDD} -p` — nombre solo letras y números (ej: `prod20260401`)
 
-## Fase 5 — Release
+## Fase 5 — Publish o Release
 
-10. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
-11. `yes | vtex release {tipo} {canal}`
+### prod:from-qa (QA completado — NO hacer vtex release)
+
+La versión ya fue bumpeada durante el deploy a QA. Solo publicar:
+
+11. `yes | vtex publish --verbose` (confirmar con `y`)
 12. Analizar output:
-    - Publish automático exitoso → continuar
+    - Publish exitoso → continuar
+    - Compilación fallida → mostrar error completo y PARAR
+
+### prod:direct (sin QA previo — sí hacer vtex release)
+
+11. Verificar que CHANGELOG esté actualizado. Si no → preguntar: "¿Deseas actualizar el CHANGELOG antes del release? (s/n)"
+12. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
+13. `yes | vtex release {tipo} {canal}`
+14. Analizar output:
+    - Publish automático exitoso (postrelease) → confirmar con `y` al prompt de publish
     - Sin publish automático → `yes | vtex publish --verbose`
+    - `tag already exists` → hacer un nuevo release patch para incrementar la versión
     - Compilación fallida → mostrar error completo y PARAR
 
 ## Fase 6 — Instalación y Validación
 
-13. `vtex install {vendor_prod}.{app}@{version}`
-14. `vtex browse` — abre el workspace en el navegador
-15. Preguntar: "Valida el workspace de Producción. ¿Todo correcto? (s/n)"
+15. `vtex install {vendor_prod}.{app}@{version}`
+16. `vtex browse` — abre el workspace en el navegador
+17. **Esperar validación humana**: "Valida el workspace de Producción. ¿Todo correcto? (s/n)"
     - No → PARAR
 
 ## Fase 7 — Deploy
 
-16. Preguntar: "¿Hay contenido de Site Editor modificado en este workspace que necesite preservarse? (s/n)"
-17. `yes | vtex deploy {vendor_prod}.{app}@{version} -f` — auto-confirma las 2 preguntas
-18. Si Site Editor = s → `vtex promote`
+18. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
+19. `vtex use master` y luego `yes | vtex deploy {vendor_prod}.{app}@{version} -f` — auto-confirma las 2 preguntas
+20. Si Site Editor = s → `vtex promote`
 
 ## Fase 8 — Limpieza
 
-19. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
-    - Si no → cambiar a master y eliminar workspace:
+21. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
+    - Si no → workspace ya en master; eliminar workspace:
       ```
-      yes | vtex use master
-      yes | vtex workspace delete deploy{YYYYMMDD}
+      yes | vtex workspace delete prod{YYYYMMDD}
       ```
     - Si sí → workspace ya eliminado automáticamente
-20. Eliminar rama de deploy (local + remota):
+22. Eliminar rama de deploy (local + remota):
     ```bash
     git branch -D deploy/prod-{YYYYMMDD}
     git push origin --delete deploy/prod-{YYYYMMDD}
     ```
     Si la remota ya fue eliminada por el merge → ignorar el error
-21. Eliminar sección `deploy_state` de `.vtex-deploy.yaml` (reset completo)
+23. Eliminar sección `deploy_state` de `.vtex-deploy.yaml` (reset completo)
 
 ## Fin
 
-22. Reporte final: app, versión, vendor, workspace, timestamp, ambientes desplegados
-23. Nota: el PR de develop → main se crea cuando el usuario confirme que la feature es estable en producción (acción separada — no parte de este flujo)
+24. Reporte final: app, versión, vendor, workspace, timestamp, ambientes desplegados
+25. Nota: el PR de develop → main se crea cuando el usuario confirme que la feature es estable en producción (acción separada — no parte de este flujo)
 
 <vtex-rules>
 ## Reglas del agente
@@ -142,13 +158,17 @@ vtex whoami
 - NUNCA asumir que el código está en estado Prod — verificar vendor en manifest.json
 - NUNCA ejecutar `vtex link` automáticamente — el usuario lo hace manualmente
 - NUNCA crear workspace con guiones o espacios en el nombre
-- SIEMPRE crear workspace de producción (-p) — nunca deployar directamente a master
-- SIEMPRE preguntar patch/minor/major y stable/beta — nunca asumir
+- **NUNCA ejecutar `vtex release` en flujo `prod:from-qa`** — la versión ya fue bumpeada en QA; usar solo `vtex publish --verbose`
+- SIEMPRE crear workspace de producción (-p) con nombre `prod{YYYYMMDD}` — nunca deployar directamente a master
+- SIEMPRE hacer `vtex use master` ANTES de `vtex deploy -f`
+- SIEMPRE preguntar patch/minor/major y stable/beta en flujo `prod:direct` — nunca asumir
 - SIEMPRE usar `yes | vtex deploy {app} -f` para auto-confirmar ambas preguntas
 - SIEMPRE actualizar deploy_state en .vtex-deploy.yaml después de cada fase de prod
+- SIEMPRE hacer `git checkout develop && git pull origin develop` después de que el PR a develop sea mergeado
 - SIEMPRE eliminar workspaces de producción al finalizar si no se ejecutó `vtex promote`
 - SIEMPRE eliminar la rama deploy/prod-* después del deploy
 - Al completar el deploy a Producción: eliminar la sección deploy_state de .vtex-deploy.yaml (reset completo)
 - El PR de develop → main NO es parte de este flujo — es decisión separada del usuario
 - Para cambiar de cuenta: usar `vtex switch` si hay sesión activa, `vtex login` si no hay sesión
+- Verificar `gh auth status` antes de crear cualquier PR — si falla, indicar al usuario que ejecute `! gh auth login`
 </vtex-rules>

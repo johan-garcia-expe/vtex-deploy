@@ -76,37 +76,48 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
 
 ### Fase Deploy Branch
 1. Detectar rama actual: `git branch --show-current`
-2. Crear rama de deploy: `git checkout -b deploy/qa-{YYYYMMDD}`
+2. Asegurarse de que todos los cambios estén commiteados: `git status --porcelain`
+   - Si hay cambios sin commitear → PARAR y pedir al usuario que commitee antes de continuar
+3. Crear rama de deploy: `git checkout -b deploy/qa-{YYYYMMDD}`
    - Esta rama es efímera — lleva el código transformado a la rama `qa`
    - Nunca se mergea de vuelta a `develop` ni a `main`
-3. Transformar vendor → dirección `to_qa` (usar lógica de vtex-transform embebida abajo)
-4. `git add -A && git commit -m "chore: vendor swap → qa ({YYYYMMDD})"`
-5. `git push origin deploy/qa-{YYYYMMDD}`
+4. Transformar vendor → dirección `to_qa` (usar lógica de vtex-transform embebida abajo)
+5. `git add -A && git commit -m "chore: vendor swap → qa ({YYYYMMDD})"`
+6. Verificar que `.claude/` esté en `.gitignore`:
+   - Ejecutar: `cat .gitignore | grep .claude`
+   - Si no está → añadir `.claude/` al `.gitignore`, commitear: `git add .gitignore && git commit -m "chore: add .claude to gitignore"`
+   - **Motivo:** archivos untracked en `.claude/` hacen fallar `vtex release`
+7. `git push --set-upstream origin deploy/qa-{YYYYMMDD}`
+   - **El upstream debe estar configurado ANTES del release** — `vtex release` hace `git push` internamente
 
 ### Fase Publish
-6. Verificar cuenta con `vtex whoami` → solo hacer `vtex switch {vendor_qa}` si es necesario
-7. `vtex use deploy{YYYYMMDD} -p`
-   - Nombre solo letras y números, sin guiones ni espacios (ej: `deploy20260328`)
-8. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
-9. `vtex release {tipo} {canal}`
-10. Analizar output:
-    - Publish automático exitoso → continuar
+8. Verificar que el CHANGELOG esté actualizado con la descripción de los cambios.
+   - Si no hay entrada de CHANGELOG → preguntar: "¿Deseas añadir una entrada al CHANGELOG antes del release? (s/n)"
+9. Verificar cuenta con `vtex whoami` → solo hacer `vtex switch {vendor_qa}` si es necesario
+10. `vtex use deploy{YYYYMMDD} -p`
+    - Nombre solo letras y números, sin guiones ni espacios (ej: `deploy20260328`)
+11. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
+12. `vtex release {tipo} {canal}`
+13. Analizar output:
+    - El release pedirá confirmación del publish (postrelease) → guiar al usuario: "Confirma con `y` el publish que aparece"
+    - Publish automático confirmado → continuar
     - Sin publish automático → `vtex publish` manualmente
+    - `tag already exists` → la versión ya fue usada en otro vendor; hacer un nuevo release patch: `vtex release patch {canal}`
     - Compilación fallida → mostrar error completo y PARAR
 
 ### Fase Instalación y Validación
-11. `vtex install` (en el workspace creado en paso 7)
-12. `vtex browse` — abre el workspace en el navegador
-13. Preguntar: "Valida el workspace QA. ¿Todo correcto? (s/n)"
+14. `vtex install` (en el workspace creado en paso 10)
+15. `vtex browse` — abre el workspace en el navegador
+16. Preguntar: "Valida el workspace QA. ¿Todo correcto? (s/n)"
     - No → PARAR
 
 ### Fase Deploy
-14. Preguntar: "¿Hay contenido de Site Editor modificado en este workspace que necesite preservarse? (s/n)"
-15. Guiar al usuario: "Ejecuta: `yes | vtex deploy {vendor_qa}.{app}@{version} -f`" — auto-confirma las 2 preguntas
-16. Si Site Editor = s → guiar al usuario: "Ejecuta: `vtex promote`"
+17. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
+18. Guiar al usuario: "Ejecuta: `yes | vtex deploy {vendor_qa}.{app}@{version} -f`" — auto-confirma las 2 preguntas
+19. Si Site Editor = s → guiar al usuario: "Ejecuta: `vtex promote`"
 
 ### Fase Limpieza de workspaces
-17. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
+20. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
     - Si no → guiar al usuario a eliminar ambos workspaces:
       ```
       yes | vtex use master
@@ -116,8 +127,9 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
     - Si sí → el workspace de producción ya fue eliminado automáticamente; solo borrar el dev si aplica.
 
 ### Fase Git — PR de registro
-18. Crear PR de registro una vez completado el deploy.
+21. Crear PR de registro una vez completado el deploy.
     - Si la feature branch ya fue mergeada a `qa` antes del deploy → omitir este paso.
+    Verificar `gh auth status` antes de crear el PR; si falla → indicar al usuario: "Ejecuta `! gh auth login` en la terminal".
     Intentar con `gh` CLI:
     ```
     gh pr create \
@@ -127,19 +139,19 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
       --body "Deploy a QA\n\nApp: {vendor_qa}.{app}@{version}\nWorkspace: deploy{YYYYMMDD}\nOrigen: {rama-origen}"
     ```
     Si `gh` no está instalado → dar al usuario URL directa y datos para crearlo manualmente.
-19. Notificar al usuario que debe mergear el PR
-20. Preguntar: "¿PR mergeado? (s/n)" — esperar confirmación
-21. Al confirmar: eliminar rama deploy (local + remota):
+22. Notificar al usuario que debe mergear el PR
+23. Preguntar: "¿PR mergeado? (s/n)" — esperar confirmación
+24. Al confirmar: eliminar rama deploy (local + remota):
     ```bash
     git push origin --delete deploy/qa-{YYYYMMDD}
     git checkout qa && git pull origin qa
     git branch -D deploy/qa-{YYYYMMDD}
     ```
-22. Actualizar `deploy_state.phase` → `qa_merged` en `.vtex-deploy.yaml`
+25. Actualizar `deploy_state.phase` → `qa_merged` en `.vtex-deploy.yaml`
 
 ### Fin
-23. Mostrar reporte: app, versión, vendor, workspace, timestamp
-24. Preguntar: "¿Deseas continuar con el deploy a Producción? (s/n)"
+26. Mostrar reporte: app, versión, vendor, workspace, timestamp
+27. Preguntar: "¿Deseas continuar con el deploy a Producción? (s/n)"
 
 ---
 
@@ -193,8 +205,13 @@ Punto de entrada: código ya en estado QA (vendor == vendor_qa). Omite deploy br
 - NUNCA omitir vtex browse ni la validación humana del workspace
 - NUNCA advertir al usuario que "revierta el vendor antes de hacer PR a develop" — en este proyecto el vendor_qa en una feature branch es intencional
 - NUNCA ejecutar `vtex link` automáticamente — el usuario lo hace manualmente
+- NUNCA hacer `git push` sin `--set-upstream` en ramas de deploy — `vtex release` hace `git push` internamente y falla sin upstream
+- SIEMPRE verificar que `.claude/` esté en `.gitignore` antes del release — su ausencia hace fallar `vtex release`
+- SIEMPRE verificar que todos los cambios estén commiteados antes de crear la rama de deploy
 - SIEMPRE preguntar patch/minor/major y stable/beta — nunca asumir
+- SIEMPRE guiar al usuario a confirmar con `y` el prompt de publish del postrelease
 - SIEMPRE preguntar por Site Editor antes de vtex deploy -f
+- SIEMPRE actualizar CHANGELOG antes del release — preguntar si no está actualizado
 - SIEMPRE crear PR hacia la rama `qa`, no hacia `develop`
 - La rama `develop` NO se toca durante el flujo de QA
 - SIEMPRE usar `yes | vtex deploy {app} -f` para auto-confirmar ambas preguntas
@@ -203,4 +220,6 @@ Punto de entrada: código ya en estado QA (vendor == vendor_qa). Omite deploy br
 - SIEMPRE eliminar la rama deploy/qa-* después de que el PR sea mergeado
 - SIEMPRE preguntar si retomar o reiniciar cuando se detecta un deploy_state previo
 - Si `gh` CLI no está disponible → dar URL directa de GitHub con los datos del PR
+- Verificar `gh auth status` antes de crear cualquier PR; si falla → indicar `! gh auth login`
+- Si `tag already exists` → hacer nuevo release patch para incrementar la versión
 </vtex-rules>
