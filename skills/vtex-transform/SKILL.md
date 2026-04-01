@@ -39,7 +39,8 @@ Todo lo de App Custom, más:
    - Solo existe `styles/css/` → formato CSS (operar sobre archivos `.css`)
 5. Renombrar archivos cuyo nombre contenga el vendor + alguna app de `dependencies_to_switch`:
    - Patrón: `{vendor_old}.{app-name}.*` → `{vendor_new}.{app-name}.*`
-   - Ignorar archivos parciales o fragmentos (`_*.*` — cualquier archivo cuyo nombre empiece con `_`)
+   - Buscar archivos a renombrar usando glob por nombre: `**/styles/**/{vendor_old}.{app-name}*.css` (o `.scss`) — NO usar grep por contenido; grep encuentra referencias internas, no los archivos a renombrar
+   - Ignorar archivos parciales o fragmentos (`_*.*`) — cualquier archivo cuyo nombre empiece con `_`, aplica para `.css` y `.scss` — ej: `_papajohns.components.css` NO se renombra porque es importado internamente con `@import url(./_papajohns.components.css)`
    - Detectar carpetas especiales que compilan a destinos distintos (ej: `extra/` → `assets/css/`)
    - Si es SCSS: renombrar en `styles/scss/` — NO tocar los `.css` compilados
 

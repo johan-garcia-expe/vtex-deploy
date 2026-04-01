@@ -15,7 +15,7 @@ description: "Reglas para la transformación de archivos al cambiar de vendor en
 ## Durante la transformación
 
 - NUNCA tocar prefijos `vtex.` — solo el vendor custom del proyecto
-- NUNCA renombrar archivos parciales SCSS (`_*.scss`)
+- NUNCA renombrar archivos parciales (`_*.*`) — cualquier archivo cuyo nombre empiece con `_`, independientemente de la extensión (.css, .scss, etc.)
 - NUNCA modificar archivos CSS compilados si existen fuentes SCSS — siempre operar en los archivos fuente
 - SOLO transformar archivos JSON del store si la app es un Store Theme (builder `styles` en manifest.json)
 - SOLO renombrar archivos de estilos cuyo nombre contenga una app de `dependencies_to_switch`
