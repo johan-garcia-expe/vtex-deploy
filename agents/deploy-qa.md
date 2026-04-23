@@ -112,18 +112,18 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
     - `AUTH_ERROR` → verificar cuenta con `vtex whoami` y hacer switch si es necesario
 
 ### Fase Instalación y Validación
-14. `vtex install` (en el workspace creado en paso 10)
-15. `vtex browse` — abre el workspace en el navegador
-16. Preguntar: "Valida el workspace QA. ¿Todo correcto? (s/n)"
+15. `vtex install` (en el workspace creado en paso 10)
+16. `vtex browse` — abre el workspace en el navegador
+17. Preguntar: "Valida el workspace QA. ¿Todo correcto? (s/n)"
     - No → PARAR
 
 ### Fase Deploy
-17. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
-18. Guiar al usuario: "Ejecuta: `yes | vtex deploy {vendor_qa}.{app}@{version} -f`" — auto-confirma las 2 preguntas
-19. Si Site Editor = s → guiar al usuario: "Ejecuta: `vtex promote`"
+18. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
+19. Guiar al usuario: "Ejecuta: `yes | vtex deploy {vendor_qa}.{app}@{version} -f`" — auto-confirma las 2 preguntas
+20. Si Site Editor = s → guiar al usuario: "Ejecuta: `vtex promote`"
 
 ### Fase Limpieza de workspaces
-20. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
+21. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
     - Si no → guiar al usuario a eliminar ambos workspaces:
       ```
       yes | vtex use master
@@ -133,7 +133,7 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
     - Si sí → el workspace de producción ya fue eliminado automáticamente; solo borrar el dev si aplica.
 
 ### Fase Git — PR de registro
-21. Crear PR de registro una vez completado el deploy.
+22. Crear PR de registro una vez completado el deploy.
     - Si la feature branch ya fue mergeada a `qa` antes del deploy → omitir este paso.
     Verificar `gh auth status` antes de crear el PR; si falla → indicar al usuario: "Ejecuta `! gh auth login` en la terminal".
     Intentar con `gh` CLI:
@@ -145,19 +145,19 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
       --body "Deploy a QA\n\nApp: {vendor_qa}.{app}@{version}\nWorkspace: deploy{YYYYMMDD}\nOrigen: {rama-origen}"
     ```
     Si `gh` no está instalado → dar al usuario URL directa y datos para crearlo manualmente.
-22. Notificar al usuario que debe mergear el PR
-23. Preguntar: "¿PR mergeado? (s/n)" — esperar confirmación
-24. Al confirmar: eliminar rama deploy (local + remota):
+23. Notificar al usuario que debe mergear el PR
+24. Preguntar: "¿PR mergeado? (s/n)" — esperar confirmación
+25. Al confirmar: eliminar rama deploy (local + remota):
     ```bash
     git push origin --delete deploy/qa-{YYYYMMDD}
     git checkout qa && git pull origin qa
     git branch -D deploy/qa-{YYYYMMDD}
     ```
-25. Actualizar `deploy_state.phase` → `qa_merged` en `.vtex-deploy.yaml`
+26. Actualizar `deploy_state.phase` → `qa_merged` en `.vtex-deploy.yaml`
 
 ### Fin
-26. Mostrar reporte: app, versión, vendor, workspace, timestamp
-27. Preguntar: "¿Deseas continuar con el deploy a Producción? (s/n)"
+27. Mostrar reporte: app, versión, vendor, workspace, timestamp
+28. Preguntar: "¿Deseas continuar con el deploy a Producción? (s/n)"
 
 ---
 
@@ -231,6 +231,8 @@ Usa `memory: project` para acumular conocimiento entre sesiones sobre **este pro
 - NUNCA preguntar al usuario si es qa:full o qa:release — detectar automáticamente desde manifest.json
 - NUNCA crear workspace con guiones o espacios en el nombre
 - NUNCA continuar si vtex publish falla — mostrar error y PARAR
+- NUNCA omitir `vtex install` — ejecutar siempre después del `vtex use` y antes de `vtex browse`
+- NUNCA ejecutar `vtex deploy` sin completar en orden: `vtex install` → `vtex browse` → confirmación humana explícita
 - NUNCA omitir vtex browse ni la validación humana del workspace
 - NUNCA advertir al usuario que "revierta el vendor antes de hacer PR a develop" — en este proyecto el vendor_qa en una feature branch es intencional
 - NUNCA ejecutar `vtex link` automáticamente — el usuario lo hace manualmente

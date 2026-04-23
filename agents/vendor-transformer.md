@@ -41,15 +41,24 @@ Todo lo de App Custom, más:
 4. Detectar formato:
    - Existe `styles/scss/` → formato SCSS (operar sobre archivos `.scss` fuente)
    - Solo existe `styles/css/` → formato CSS (operar sobre archivos `.css`)
-5. Renombrar archivos cuyo nombre contenga el vendor + alguna app de `dependencies_to_switch`:
-   - Patrón: `{vendor_old}.{app-name}.*` → `{vendor_new}.{app-name}.*`
+5. Descubrir TODOS los archivos a renombrar con `find` recursivo (nunca solo grep):
+   ```bash
+   # Para cada app en dependencies_to_switch:
+   find styles/ -name "{vendor_old}.{app-name}.*" | sort
+   ```
    - Ignorar archivos parciales o fragmentos (`_*.*` — cualquier archivo cuyo nombre empiece con `_`)
    - Detectar carpetas especiales que compilan a destinos distintos (ej: `extra/` → `assets/css/`)
    - Si es SCSS: renombrar en `styles/scss/` — NO tocar los `.css` compilados
+   - Renombrar cada archivo a `{vendor_new}.{app-name}.*` **sin modificar su contenido**
+
+6. Antes de editar o recrear cualquier archivo de estilos:
+   - Leer el archivo completo con `Read` para obtener el contenido íntegro
+   - Contar líneas del original (usar `wc -l`)
+   - Después de escribir el nuevo archivo, verificar que tenga el mismo número de líneas
 
 ### Archivos JSON del store
 
-6. Buscar y reemplazar vendor en:
+7. Buscar y reemplazar vendor en:
    - `store/blocks.json`
    - `store/blocks/**/*.json` y `store/blocks/**/*.jsonc`
    - `store/contentSchemas.json`
@@ -60,10 +69,19 @@ Todo lo de App Custom, más:
 
 ## Verificación post-transformación
 
-7. Mostrar resumen completo de archivos modificados (listado)
-8. Preguntar: "¿Los cambios son correctos? (s/n)"
-   - No → revertir cambios y PARAR
-9. Actualizar `deploy_state.phase` en `.vtex-deploy.yaml`:
+8. Ejecutar los 3 comandos de verificación (los tres deben devolver salida vacía):
+   ```bash
+   # Para cada app en dependencies_to_switch:
+   find styles/ -name "{vendor_old}.{app-name}.*"
+   grep -rn "{vendor_old}-{app-name}-" styles/ | grep -v "{vendor_new}"
+   grep '"{vendor_old}\.{app-name}"' manifest.json | grep -v '{vendor_new}'
+   ```
+   Si alguno devuelve salida → corregir antes de continuar.
+
+9. Mostrar resumen completo de archivos modificados (listado)
+10. Preguntar: "¿Los cambios son correctos? (s/n)"
+    - No → revertir cambios y PARAR
+11. Actualizar `deploy_state.phase` en `.vtex-deploy.yaml`:
    - Dirección `to_qa` → `phase: transformed`
    - Dirección `to_prod` → `phase: prod_transformed`
 
@@ -98,8 +116,13 @@ Usa `memory: project` para acumular conocimiento entre sesiones sobre **este pro
 - NUNCA renombrar archivos parciales o fragmentos — cualquier archivo cuyo nombre empiece con `_` (`_*.*`)
 - NUNCA modificar archivos CSS compilados si existen fuentes SCSS — operar siempre en los fuente
 - NUNCA asumir qué dependencias transformar — usar exclusivamente las de `dependencies_to_switch`
+- NUNCA usar solo `grep` para descubrir archivos a renombrar — usar `find` recursivo sobre todo `styles/`
+- NUNCA recrear o editar un archivo de estilos sin antes leerlo completo con `Read`
+- NUNCA declarar la transformación terminada sin ejecutar los 3 comandos de verificación (salida vacía)
+- NUNCA modificar URLs de CDN (`*.vtexassets.com`, `*.vteximg.com.br`) — solo renombrar nombres de archivo y clases CSS
 - SOLO transformar archivos JSON del store si la app es un Store Theme (tiene builder `styles`)
 - SOLO renombrar archivos de estilos cuyo nombre contenga una app de `dependencies_to_switch`
+- SIEMPRE verificar que el número de líneas del archivo nuevo coincide con el original tras recrearlo
 - SIEMPRE mostrar resumen completo de archivos modificados y pedir confirmación
 - SIEMPRE actualizar deploy_state.phase en .vtex-deploy.yaml después de una transformación exitosa
 - Si el usuario rechaza → revertir todos los cambios y PARAR
