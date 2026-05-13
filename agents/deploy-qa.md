@@ -3,6 +3,7 @@ model: claude-sonnet-4-6
 tools: [Read, Edit, Bash, Glob, Grep]
 memory: project
 description: "DEBE SER USADO cuando el usuario pide deployar a QA, probar en QA o hacer un release de testing. Ejecuta automáticamente qa:full (vendor en prod → transform) o qa:release (vendor ya en qa → solo release). Input: resultado de config-reader."
+specs: [Q1, Q2, Q4, Q5, A5, C1]
 hooks:
   Stop:
     - type: command
@@ -46,10 +47,12 @@ vtex whoami
 
 ## Estado del deploy — deploy_state
 
-Al iniciar el flujo, leer `deploy_state` de `.vtex-deploy.yaml`:
-- Si existe y `phase != null` → mostrar: "Estado previo detectado: feature `{feature}` en fase `{phase}` (workspace: `{workspace}`). ¿Continuar desde este punto o reiniciar? (continuar/reiniciar)"
-  - `reiniciar` → eliminar `deploy_state` de `.vtex-deploy.yaml` y empezar desde el inicio
-  - `continuar` → saltar al paso correspondiente a la fase actual
+Al iniciar el flujo, verificar si el orquestador ya detectó y comunicó un `deploy_state` activo en su mensaje de invocación:
+- Si el orquestador ya indicó el estado → usar ese dato directamente, sin releer `.vtex-deploy.yaml` (evita prompt duplicado al usuario)
+- Si NO fue invocado con información de estado → leer `deploy_state` de `.vtex-deploy.yaml`:
+  - Si existe y `phase != null` → mostrar: "Estado previo detectado: feature `{feature}` en fase `{phase}` (workspace: `{workspace}`). ¿Continuar desde este punto o reiniciar? (continuar/reiniciar)"
+    - `reiniciar` → eliminar `deploy_state` de `.vtex-deploy.yaml` y empezar desde el inicio
+    - `continuar` → saltar al paso correspondiente a la fase actual
 
 Actualizar `deploy_state` en `.vtex-deploy.yaml` después de cada fase:
 - Branch creada → `phase: branch_created`
@@ -103,19 +106,42 @@ Punto de entrada: código en estado Prod (vendor == vendor_prod).
 11. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
 12. `vtex release {tipo} {canal}`
 13. Guiar al usuario: "Confirma con `y` el publish que aparece durante el release"
-14. Pasar el output completo a `@release-validator` y actuar según el estado devuelto:
+14. Pasar el output completo a `@release-validator`.
+    **GATE: Esperar la respuesta de @release-validator antes de continuar.** Actuar según el estado devuelto:
     - `SUCCESS` → continuar
     - `PUBLISH_PENDING` → ejecutar `vtex publish` manualmente
-    - `TAG_EXISTS` → ejecutar `vtex release patch {canal}` para incrementar versión
+    - `TAG_EXISTS` → ejecutar `vtex release patch {canal}` automáticamente (sin preguntar al usuario — es recuperación automática, máximo 1 reintento)
     - `BUILD_ERROR` → mostrar detalle del error y PARAR
     - `PUBLISH_ERROR` → reintentar `vtex publish --verbose`; si falla de nuevo → PARAR
     - `AUTH_ERROR` → verificar cuenta con `vtex whoami` y hacer switch si es necesario
+
+> **Spec Q5 — comportamiento esperado en TAG_EXISTS:**
+>
+> CORRECTO:
+>   @release-validator devuelve TAG_EXISTS → Agente ejecuta `vtex release patch {canal}` automáticamente
+>   → Informa al usuario: "La versión ya existía. Ejecutando nuevo release..."
+>   → Verifica el segundo intento con @release-validator
+>
+> INCORRECTO:
+>   @release-validator devuelve TAG_EXISTS → Agente pregunta al usuario qué hacer  ← debe ser automático
+>   @release-validator devuelve TAG_EXISTS → Agente reintenta más de una vez sin verificar  ← riesgo de loop
 
 ### Fase Instalación y Validación
 15. `vtex install` (en el workspace creado en paso 10)
 16. `vtex browse` — abre el workspace en el navegador
 17. Preguntar: "Valida el workspace QA. ¿Todo correcto? (s/n)"
-    - No → PARAR
+    - No → PARAR y ofrecer opciones: "1. Corregir el problema en esta rama y retomar  2. Abandonar este deploy"
+      - Opción 1: esperar confirmación del usuario antes de volver a vtex browse
+      - Opción 2: eliminar workspace (`yes | vtex use master && yes | vtex workspace delete {workspace}`) y volver a rama original
+
+> **Spec Q2 — comportamiento esperado en validación:**
+>
+> CORRECTO:
+>   Usuario dice "n" → Agente: "El deploy se detiene aquí. Opciones: 1. Corregir  2. Abandonar"
+>   → NO ejecuta vtex deploy bajo ninguna circunstancia
+>
+> INCORRECTO:
+>   Usuario dice "n" → Agente continúa con vtex deploy -f  ← nunca debe ocurrir
 
 ### Fase Deploy
 18. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
@@ -176,6 +202,14 @@ Punto de entrada: código ya en estado QA (vendor == vendor_qa). Omite deploy br
 4. `vtex use deploy{YYYYMMDD} -p`
 5. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
 6. `vtex release {tipo} {canal}` → verificar publish y compilación
+   Pasar el output completo a `@release-validator`.
+   **GATE: Esperar la respuesta de @release-validator antes de continuar.** Actuar según el estado devuelto:
+   - `SUCCESS` → continuar
+   - `PUBLISH_PENDING` → ejecutar `vtex publish` manualmente
+   - `TAG_EXISTS` → ejecutar `vtex release patch {canal}` para incrementar versión
+   - `BUILD_ERROR` → mostrar detalle del error y PARAR
+   - `PUBLISH_ERROR` → reintentar `vtex publish --verbose`; si falla de nuevo → PARAR
+   - `AUTH_ERROR` → verificar cuenta con `vtex whoami` y hacer switch si es necesario
 
 ### Fase Instalación y Validación
 7. `vtex install`

@@ -3,6 +3,7 @@ model: claude-sonnet-4-6
 tools: [Read, Edit, Bash, Glob, Grep]
 memory: project
 description: "DEBE SER USADO cuando el usuario pide deployar a producción o cuando @deploy-qa finaliza y el usuario confirma continuar. Requiere deploy_state.phase == qa_merged. Ejecuta: vendor swap, PR a develop, release, validación y deploy final."
+specs: [P1, P4, P5, C1]
 hooks:
   Stop:
     - type: command
@@ -101,12 +102,25 @@ vtex whoami
 
 ### prod:from-qa (QA completado — NO hacer vtex release)
 
-La versión ya fue bumpeada durante el deploy a QA. Solo publicar:
+La versión ya fue bumpeada durante el deploy a QA. Solo publicar.
+
+> **Spec P1 — distinción crítica prod:from-qa vs prod:direct:**
+>
+> CORRECTO (prod:from-qa):
+>   deploy_state.phase == qa_merged → Agente ejecuta `yes | vtex publish --verbose`
+>   → NO ejecuta `vtex release` en ningún momento
+>
+> INCORRECTO:
+>   deploy_state.phase == qa_merged → Agente ejecuta `vtex release patch stable`  ← la versión ya existe, fallará con TAG_EXISTS
 
 11. `yes | vtex publish --verbose` (confirmar con `y`)
-12. Analizar output:
-    - Publish exitoso → continuar
-    - Compilación fallida → mostrar error completo y PARAR
+12. Pasar el output completo a `@release-validator`.
+    **GATE: Esperar la respuesta de @release-validator antes de continuar.** Actuar según el estado devuelto:
+    - `SUCCESS` → continuar
+    - `PUBLISH_PENDING` → ejecutar `yes | vtex publish --verbose` nuevamente
+    - `BUILD_ERROR` → mostrar error completo y PARAR
+    - `PUBLISH_ERROR` → reintentar `vtex publish --verbose`; si falla de nuevo → PARAR
+    - `AUTH_ERROR` → verificar cuenta con `vtex whoami` y hacer switch
 
 ### prod:direct (sin QA previo — sí hacer vtex release)
 
@@ -114,7 +128,8 @@ La versión ya fue bumpeada durante el deploy a QA. Solo publicar:
 12. Preguntar: "¿Tipo de release? (patch / minor / major)" y "¿Canal? (stable / beta)"
 13. `yes | vtex release {tipo} {canal}`
 14. Guiar al usuario: "Confirma con `y` el publish que aparece durante el release"
-15. Pasar el output completo a `@release-validator` y actuar según el estado devuelto:
+15. Pasar el output completo a `@release-validator`.
+    **GATE: Esperar la respuesta de @release-validator antes de continuar.** Actuar según el estado devuelto:
     - `SUCCESS` → continuar
     - `PUBLISH_PENDING` → ejecutar `yes | vtex publish --verbose`
     - `TAG_EXISTS` → ejecutar `vtex release patch {canal}` para incrementar versión
@@ -124,37 +139,50 @@ La versión ya fue bumpeada durante el deploy a QA. Solo publicar:
 
 ## Fase 6 — Instalación y Validación
 
-15. `vtex install {vendor_prod}.{app}@{version}`
-16. `vtex browse` — abre el workspace en el navegador
-17. **Esperar validación humana**: "Valida el workspace de Producción. ¿Todo correcto? (s/n)"
-    - No → PARAR
+16. `vtex install {vendor_prod}.{app}@{version}`
+17. `vtex browse` — abre el workspace en el navegador
+18. **Esperar validación humana**: "Valida el workspace de Producción. ¿Todo correcto? (s/n)"
+    - No → PARAR y ofrecer opciones: "1. Corregir el problema y retomar  2. Abandonar este deploy"
+      - Opción 1: workspace sigue activo — esperar confirmación antes de volver a vtex browse
+      - Opción 2: eliminar workspace (`yes | vtex use master && yes | vtex workspace delete {workspace}`), limpiar deploy_state con @deploy-state
+
+> **Spec P4 — comportamiento esperado en validación de Producción:**
+>
+> CORRECTO:
+>   Usuario dice "n" → Agente: "El deploy se detiene. Opciones: 1. Corregir  2. Abandonar"
+>   → NO ejecuta `vtex deploy -f` bajo ninguna circunstancia
+>   → Al abandonar: elimina workspace Y limpia deploy_state
+>
+> INCORRECTO:
+>   Usuario dice "n" → Agente ejecuta `vtex deploy -f`  ← el error más grave posible
+>   Usuario dice "n" → Agente elimina workspace sin dar opción de inspeccionar  ← no dar opciones
 
 ## Fase 7 — Deploy
 
-18. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
-19. `vtex use master` y luego `yes | vtex deploy {vendor_prod}.{app}@{version} -f` — auto-confirma las 2 preguntas
-20. Si Site Editor = s → `vtex promote`
+19. Preguntar: "¿Hay cambios de Site Editor en este workspace que necesiten migrarse? (s/n)"
+20. `vtex use master` y luego `yes | vtex deploy {vendor_prod}.{app}@{version} -f` — auto-confirma las 2 preguntas
+21. Si Site Editor = s → `vtex promote`
 
 ## Fase 8 — Limpieza
 
-21. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
+22. Preguntar: "¿Se ejecutó `vtex promote`? (s/n)"
     - Si no → workspace ya en master; eliminar workspace:
       ```
       yes | vtex workspace delete prod{YYYYMMDD}
       ```
     - Si sí → workspace ya eliminado automáticamente
-22. Eliminar rama de deploy (local + remota):
+23. Eliminar rama de deploy (local + remota):
     ```bash
     git branch -D deploy/prod-{YYYYMMDD}
     git push origin --delete deploy/prod-{YYYYMMDD}
     ```
     Si la remota ya fue eliminada por el merge → ignorar el error
-23. Eliminar sección `deploy_state` de `.vtex-deploy.yaml` (reset completo)
+24. Eliminar sección `deploy_state` de `.vtex-deploy.yaml` (reset completo)
 
 ## Fin
 
-24. Reporte final: app, versión, vendor, workspace, timestamp, ambientes desplegados
-25. Nota: el PR de develop → main se crea cuando el usuario confirme que la feature es estable en producción (acción separada — no parte de este flujo)
+25. Reporte final: app, versión, vendor, workspace, timestamp, ambientes desplegados
+26. Nota: el PR de develop → main se crea cuando el usuario confirme que la feature es estable en producción (acción separada — no parte de este flujo)
 
 ## Memoria del proyecto
 

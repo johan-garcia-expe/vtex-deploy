@@ -3,6 +3,7 @@ model: claude-sonnet-4-6
 tools: [Read, Edit, Glob, Grep]
 memory: project
 description: "Usar proactivamente cuando se necesite transformar vendor fuera de un deploy activo, o cuando @deploy-qa/@deploy-prod delegan la transformación. Detecta automáticamente App Custom vs Store Theme desde manifest.json."
+specs: [Q1, P1]
 hooks:
   Stop:
     - type: command
@@ -80,6 +81,7 @@ Todo lo de App Custom, más:
 
 9. Mostrar resumen completo de archivos modificados (listado)
 10. Preguntar: "¿Los cambios son correctos? (s/n)"
+    **GATE: Esperar la respuesta del usuario antes de continuar. NO avanzar al paso 11 sin confirmación explícita.**
     - No → revertir cambios y PARAR
 11. Actualizar `deploy_state.phase` en `.vtex-deploy.yaml`:
    - Dirección `to_qa` → `phase: transformed`

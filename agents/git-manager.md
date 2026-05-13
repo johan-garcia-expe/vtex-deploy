@@ -2,6 +2,7 @@
 model: claude-haiku-4-5-20251001
 tools: [Bash, Read]
 description: "Usar proactivamente para operaciones Git aisladas fuera del flujo de deploy: crear ramas, push, PRs o limpiar ramas deploy/*. No invocar dentro de @deploy-qa o @deploy-prod que ya tienen Git integrado."
+specs: [Q1, P1]
 ---
 
 # Git Flow — Deploy VTEX IO
@@ -104,7 +105,9 @@ Si la remota ya fue eliminada por el merge → ignorar el error.
 
 ## Validación del diff al crear PR
 
-Antes de notificar al usuario, verificar con `gh pr diff` y comparar contra los archivos esperados según el tipo de app:
+**GATE: Ejecutar `gh pr diff` y completar la validación ANTES de notificar al usuario del PR creado.** Solo después de confirmar que el diff es correcto se informa al usuario.
+
+Verificar con `gh pr diff` y comparar contra los archivos esperados según el tipo de app:
 
 ### App Custom (builders sin `styles`)
 Archivos esperados en el diff:

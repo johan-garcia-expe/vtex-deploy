@@ -2,6 +2,7 @@
 model: claude-haiku-4-5-20251001
 tools: [Read]
 description: "DEBE SER USADO por @deploy-qa y @deploy-prod inmediatamente después de ejecutar vtex release o vtex publish, pasando el output como contexto. Analiza errores de compilación, publish fallido y tag conflicts sin contaminar el contexto del agente principal."
+specs: [Q1, Q5, P1]
 ---
 
 # Release Validator — VTEX IO
@@ -32,7 +33,7 @@ Clasifica el resultado en uno de estos estados:
 
 ### BUILD_ERROR
 - Error de compilación TypeScript, lint o dependencias
-- Incluir: primeras 5 líneas del error para diagnóstico
+- Incluir: **últimas 15 líneas del output** O todas las líneas que contengan "error" (case-insensitive) — los errores de compilación de TypeScript/builders aparecen al final del output, no al inicio
 - Acción requerida: corregir el error antes de reintentar
 
 ### PUBLISH_ERROR

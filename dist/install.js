@@ -93,7 +93,7 @@ function injectOrchestrator(filePath, orchestratorContent, format) {
 // Agrega entradas al .gitignore
 function updateGitignore(destPath) {
     const gitignorePath = join(destPath, ".gitignore");
-    const entries = [".agents/", ".vtex-deploy/"];
+    const entries = [".agents/", ".vtex-deploy/", ".claude/"];
     let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, "utf-8") : "";
     let added = false;
     for (const entry of entries) {
@@ -104,6 +104,47 @@ function updateGitignore(destPath) {
     }
     if (added)
         writeFileSync(gitignorePath, content, "utf-8");
+}
+// Copia los subagentes a .claude/agents/ del proyecto destino (solo Claude Code)
+function copyAgentDefinitions(destPath) {
+    const agentsDir = join(destPath, ".claude", "agents");
+    mkdirSync(agentsDir, { recursive: true });
+    const src = join(INSTALLER_ROOT, "agents");
+    cpSync(src, agentsDir, { recursive: true });
+}
+// Copia vtex-deploy-safety.md a .claude/rules/ del proyecto destino (solo Claude Code)
+function copyScopedRules(destPath) {
+    const rulesDir = join(destPath, ".claude", "rules");
+    mkdirSync(rulesDir, { recursive: true });
+    const src = join(INSTALLER_ROOT, "rules", "vtex-deploy-safety.md");
+    const dest = join(rulesDir, "vtex-deploy-safety.md");
+    cpSync(src, dest);
+}
+// Copia los hooks de quality gate a .claude/hooks/ del proyecto destino (solo Claude Code)
+function copyHooks(destPath) {
+    const hooksDir = join(destPath, ".claude", "hooks");
+    mkdirSync(hooksDir, { recursive: true });
+    const src = join(INSTALLER_ROOT, "hooks");
+    if (existsSync(src)) {
+        cpSync(src, hooksDir, { recursive: true });
+    }
+}
+// Copia las specs de conversación a .vtex-deploy/specs/ del proyecto destino
+function copySpecs(destPath) {
+    const specsSrc = join(INSTALLER_ROOT, "spec", "flows");
+    const specsDest = join(destPath, ".vtex-deploy", "specs");
+    if (existsSync(specsSrc)) {
+        mkdirSync(specsDest, { recursive: true });
+        cpSync(specsSrc, specsDest, { recursive: true });
+    }
+}
+// Copia el índice de specs
+function copySpecIndex(destPath) {
+    const indexSrc = join(INSTALLER_ROOT, "spec", "index.md");
+    const indexDest = join(destPath, ".vtex-deploy", "specs", "index.md");
+    if (existsSync(indexSrc)) {
+        cpSync(indexSrc, indexDest);
+    }
 }
 // Copia la config operativa al proyecto destino
 function copyConfig(destPath) {
@@ -216,9 +257,31 @@ async function main() {
     spinner.start("Copiando config operativa...");
     copyConfig(installDest);
     spinner.stop("Config copiada a .vtex-deploy/");
+    // Fase C2 — Specs de conversación
+    spinner.start("Copiando specs de conversación...");
+    copySpecs(installDest);
+    copySpecIndex(installDest);
+    spinner.stop("Specs copiadas a .vtex-deploy/specs/");
     // Fase D — .gitignore
     updateGitignore(installDest);
-    p.outro("vtex-deploy instalado correctamente. El agente ya tiene acceso a los skills de deploy VTEX IO.\n  Ejecuta vtex-deploy-init para configurar el proyecto.");
+    // Fase E — Sub-agentes Claude Code (.claude/agents/)
+    if (selectedAgents.includes("Claude Code")) {
+        spinner.start("Copiando sub-agentes a .claude/agents/...");
+        copyAgentDefinitions(installDest);
+        spinner.stop("Sub-agentes copiados a .claude/agents/");
+        // Fase F — Reglas scoped (.claude/rules/)
+        spinner.start("Copiando reglas scoped a .claude/rules/...");
+        copyScopedRules(installDest);
+        spinner.stop("Reglas copiadas a .claude/rules/");
+        // Fase G — Hooks de quality gate (.claude/hooks/)
+        spinner.start("Copiando hooks de quality gate a .claude/hooks/...");
+        copyHooks(installDest);
+        spinner.stop("Hooks copiados a .claude/hooks/");
+    }
+    p.outro("vtex-deploy instalado correctamente. El agente ya tiene acceso a los skills de deploy VTEX IO.\n" +
+        "  Ejecuta vtex-deploy-init para configurar el proyecto.\n\n" +
+        "  Recomendación para sesiones largas de deploy:\n" +
+        "  CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=50 claude");
 }
 main().catch((err) => {
     console.error(err);

@@ -145,6 +145,25 @@ function copyHooks(destPath: string) {
   }
 }
 
+// Copia las specs de conversación a .vtex-deploy/specs/ del proyecto destino
+function copySpecs(destPath: string) {
+  const specsSrc = join(INSTALLER_ROOT, "spec", "flows");
+  const specsDest = join(destPath, ".vtex-deploy", "specs");
+  if (existsSync(specsSrc)) {
+    mkdirSync(specsDest, { recursive: true });
+    cpSync(specsSrc, specsDest, { recursive: true });
+  }
+}
+
+// Copia el índice de specs
+function copySpecIndex(destPath: string) {
+  const indexSrc = join(INSTALLER_ROOT, "spec", "index.md");
+  const indexDest = join(destPath, ".vtex-deploy", "specs", "index.md");
+  if (existsSync(indexSrc)) {
+    cpSync(indexSrc, indexDest);
+  }
+}
+
 // Copia la config operativa al proyecto destino
 function copyConfig(destPath: string) {
   const configSrc = join(INSTALLER_ROOT, ".vtex-deploy", "config.yaml");
@@ -256,6 +275,12 @@ async function main() {
   spinner.start("Copiando config operativa...");
   copyConfig(installDest);
   spinner.stop("Config copiada a .vtex-deploy/");
+
+  // Fase C2 — Specs de conversación
+  spinner.start("Copiando specs de conversación...");
+  copySpecs(installDest);
+  copySpecIndex(installDest);
+  spinner.stop("Specs copiadas a .vtex-deploy/specs/");
 
   // Fase D — .gitignore
   updateGitignore(installDest);

@@ -2,6 +2,7 @@
 model: claude-haiku-4-5-20251001
 tools: [Read, Edit]
 description: "DEBE SER USADO proactivamente después de cada fase del deploy para actualizar deploy_state en .vtex-deploy.yaml. También invocarlo para leer el estado actual o limpiarlo al finalizar producción."
+specs: [A5, P4]
 ---
 
 # Deploy State Manager
